@@ -26,6 +26,38 @@ Play Pitch in the browser with a clean Flutter UI, fast local mock data for inst
 
 Note: The app defaults to mock mode for local dev and PR previews.
 
+## Progressive Web App (PWA) Installation
+
+The Pitch game is a fully installable Progressive Web App that works offline in mock mode. 
+
+### Install on Desktop
+
+1. Visit the [mock demo](https://tonytmtsh.github.io/pitch_mock/) in Chrome, Edge, or Firefox
+2. Look for the install icon in the address bar (⊕ or download icon)
+3. Click "Install" when prompted
+4. The app will open in its own window and be added to your desktop/start menu
+
+### Install on Mobile
+
+**Android (Chrome):**
+1. Visit the demo site in Chrome
+2. Tap the menu (⋮) and select "Add to Home screen" or "Install app"
+3. Confirm the installation
+
+**iOS (Safari):**
+1. Visit the demo site in Safari
+2. Tap the Share button (⬆️) 
+3. Select "Add to Home Screen"
+4. Tap "Add" to confirm
+
+### Offline Play
+
+Once installed, the app works completely offline in mock mode:
+- All game assets are cached automatically
+- Mock game data is stored locally
+- No internet connection required after initial installation
+- Updates are downloaded automatically when online
+
 ## Quick start
 
 Run in mock mode (recommended):

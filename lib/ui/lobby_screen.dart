@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/pitch_service.dart';
 import '../state/lobby_store.dart';
 import 'table_screen.dart';
+import 'widgets/help_dialog.dart';
 
 class LobbyScreen extends StatelessWidget {
   const LobbyScreen({super.key});
@@ -44,6 +45,16 @@ class _LobbyBody extends StatelessWidget {
       appBar: AppBar(
         title: Text(fullTitle),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'Rules & Help',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => const HelpDialog(),
+              );
+            },
+          ),
           if (showSignOut)
             IconButton(
               icon: const Icon(Icons.logout),

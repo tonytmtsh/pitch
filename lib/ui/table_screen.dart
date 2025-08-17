@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'widgets/playing_card.dart';
+import 'widgets/help_dialog.dart';
 
 import '../services/pitch_service.dart';
 import '../state/table_store.dart';
@@ -31,6 +32,16 @@ class _TableBody extends StatelessWidget {
       appBar: AppBar(
         title: Text(name),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'Rules & Help',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => const HelpDialog(),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',

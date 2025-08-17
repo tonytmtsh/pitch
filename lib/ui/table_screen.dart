@@ -230,16 +230,33 @@ class _TableBody extends StatelessWidget {
               const SizedBox(height: 8),
               const ListTile(title: Text('All Tricks')),
               const Divider(height: 1),
-              ...store.tricksAll.map((t) => ExpansionTile(
-                    title: Text('Trick ${t.index + 1} — Winner ${t.winner}${t.lastTrick ? ' (Last Trick)' : ''}'),
-                    subtitle: Text('Leader ${t.leader}'),
-                    children: t.plays
+              ...store.tricksAll.asMap().entries.map((entry) {
+                final index = entry.key;
+                final trick = entry.value;
+                final isSelected = store.selectedTrickIndex == index;
+                return Card(
+                  color: isSelected ? Colors.teal.withOpacity(0.1) : null,
+                  elevation: isSelected ? 4 : 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  child: ExpansionTile(
+                    key: GlobalKey(debugLabel: 'trick_$index'),
+                    title: Text(
+                      'Trick ${trick.index + 1} — Winner ${trick.winner}${trick.lastTrick ? ' (Last Trick)' : ''}',
+                      style: TextStyle(
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected ? Colors.teal : null,
+                      ),
+                    ),
+                    subtitle: Text('Leader ${trick.leader}'),
+                    children: trick.plays
                         .map((p) => ListTile(
                               leading: CircleAvatar(child: Text(p['pos']!)),
                               title: Text(p['card']!),
                             ))
                         .toList(),
-                  )),
+                  ),
+                );
+              }),
               // Minimal play control for the active trick when it's your turn (server mode)
               Builder(builder: (ctx) {
                 final svc = ctx.read<PitchService>();
@@ -699,11 +716,13 @@ class _GameLogEventTile extends StatelessWidget {
   }
   
   void _scrollToTrick(BuildContext context, int trickIndex) {
-    // Find the tricks section and highlight it
-    // For now, just show a snackbar as a placeholder for the jump functionality
+    // Highlight the selected trick
+    context.read<TableStore>().setSelectedTrickIndex(trickIndex);
+    
+    // Show confirmation
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Jump to Trick ${trickIndex + 1}'),
+        content: Text('Highlighted Trick ${trickIndex + 1}'),
         duration: const Duration(seconds: 1),
       ),
     );

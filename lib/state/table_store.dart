@@ -63,6 +63,23 @@ class TableStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Selected trick for highlighting
+  int? _selectedTrickIndex;
+  int? get selectedTrickIndex => _selectedTrickIndex;
+  void setSelectedTrickIndex(int? index) {
+    _selectedTrickIndex = index;
+    notifyListeners();
+    // Clear selection after a delay
+    if (index != null) {
+      Future.delayed(const Duration(seconds: 3), () {
+        if (_selectedTrickIndex == index) {
+          _selectedTrickIndex = null;
+          notifyListeners();
+        }
+      });
+    }
+  }
+
   // Get all game events in chronological order
   List<GameLogEvent> get gameLogEvents {
     final events = <GameLogEvent>[];

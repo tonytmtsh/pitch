@@ -426,15 +426,19 @@ class _ReplacementSelection extends StatelessWidget {
           
           // Show hand cards with selection capability
           if (store.myCards.isNotEmpty) ...[
+            Text('Your Hand (${store.myCards.length} cards):',
+                 style: const TextStyle(fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: store.myCards.map((card) {
                 final isSelected = store.selectedCardsForDiscard.contains(card);
                 return Semantics(
-                  label: 'Card $card${isSelected ? ' selected' : ''}',
+                  label: 'Card $card${isSelected ? ', selected for discard' : ', tap to select'}',
                   button: true,
                   selected: isSelected,
+                  hint: isSelected ? 'Tap to deselect' : 'Tap to select for discard',
                   child: CardButton(
                     enabled: true,
                     onTap: () => context.read<TableStore>().toggleCardSelection(card),
@@ -449,6 +453,16 @@ class _ReplacementSelection extends StatelessWidget {
               }).toList(),
             ),
             const SizedBox(height: 12),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('No cards in hand available for replacement'),
+            ),
+            const SizedBox(height: 8),
           ],
           
           // Selection summary and action buttons
@@ -469,14 +483,22 @@ class _ReplacementSelection extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      ElevatedButton(
-                        onPressed: () => context.read<TableStore>().requestReplacementsForSelected(),
-                        child: const Text('Request Replacements'),
+                      Semantics(
+                        label: 'Request replacement cards for ${store.selectedCardsForDiscard.length} selected cards',
+                        button: true,
+                        child: ElevatedButton(
+                          onPressed: () => context.read<TableStore>().requestReplacementsForSelected(),
+                          child: Text('Request Replacements (${store.selectedCardsForDiscard.length})'),
+                        ),
                       ),
                       const SizedBox(width: 8),
-                      TextButton(
-                        onPressed: () => context.read<TableStore>().clearCardSelection(),
-                        child: const Text('Clear Selection'),
+                      Semantics(
+                        label: 'Clear card selection',
+                        button: true,
+                        child: TextButton(
+                          onPressed: () => context.read<TableStore>().clearCardSelection(),
+                          child: const Text('Clear Selection'),
+                        ),
                       ),
                     ],
                   ),

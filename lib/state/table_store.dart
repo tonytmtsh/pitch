@@ -312,7 +312,9 @@ class TableStore extends ChangeNotifier {
 
   void requestReplacementsForSelected() {
     if (_selectedCardsForDiscard.isEmpty) return;
-    final effectivePos = mySeatPos ?? 'N';
+    final effectivePos = mySeatPos;
+    if (effectivePos == null) return; // Safety check
+    
     final discarded = _selectedCardsForDiscard.toList();
     
     // Create pending replacement with selected cards

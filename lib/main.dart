@@ -6,6 +6,7 @@ import 'ui/lobby_screen.dart';
 import 'services/pitch_service.dart';
 import 'services/mock_pitch_service.dart';
 import 'services/supabase/supabase_pitch_service.dart';
+import 'state/settings_store.dart';
 
 Future<void> main() async {
   const backend = String.fromEnvironment('BACKEND', defaultValue: 'mock');
@@ -13,6 +14,10 @@ Future<void> main() async {
   const supabaseAnon = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
 
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize settings store
+  await SettingsStore().initialize();
+  
   if (backend == 'server' && supabaseUrl.isNotEmpty && supabaseAnon.isNotEmpty) {
     await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnon);
   }
@@ -30,13 +35,20 @@ class MyApp extends StatelessWidget {
     const supabaseUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: '');
     const supabaseAnon = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
 
-    return Provider<PitchService>(
-      create: (_) {
-        if (backend == 'server') {
-          return SupabasePitchService(url: supabaseUrl, anonKey: supabaseAnon);
-        }
-        return MockPitchService();
-      },
+    return MultiProvider(
+      providers: [
+        Provider<PitchService>(
+          create: (_) {
+            if (backend == 'server') {
+              return SupabasePitchService(url: supabaseUrl, anonKey: supabaseAnon);
+            }
+            return MockPitchService();
+          },
+        ),
+        ChangeNotifierProvider<SettingsStore>(
+          create: (_) => SettingsStore(),
+        ),
+      ],
       child: MaterialApp(
         title: 'Pitch',
         theme: ThemeData(

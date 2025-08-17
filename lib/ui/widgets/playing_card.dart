@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/sound_service.dart';
 
 /// Simple playing card renderer using a short code like 'AS', '10H', 'QC'.
 class PlayingCardView extends StatelessWidget {
@@ -82,6 +83,7 @@ class CardButton extends StatefulWidget {
 
 class _CardButtonState extends State<CardButton> {
   double _scale = 1.0;
+  final SoundService _soundService = SoundService();
 
   @override
   Widget build(BuildContext context) {
@@ -92,14 +94,24 @@ class _CardButtonState extends State<CardButton> {
         color: Colors.transparent,
         child: InkWell(
           customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          onTap: widget.enabled && widget.onTap != null
+          onTap: widget.enabled
               ? () async {
-                  setState(() => _scale = 0.96);
-                  await Future.delayed(const Duration(milliseconds: 60));
-                  setState(() => _scale = 1.0);
-                  widget.onTap!.call();
+                  if (widget.onTap != null) {
+                    // Play card play sound for valid moves
+                    _soundService.playCardPlay();
+                    setState(() => _scale = 0.96);
+                    await Future.delayed(const Duration(milliseconds: 60));
+                    setState(() => _scale = 1.0);
+                    widget.onTap!.call();
+                  } else {
+                    // Play invalid tap sound for enabled but no-op taps
+                    _soundService.playInvalidTap();
+                  }
                 }
-              : null,
+              : () {
+                  // Play invalid tap sound for disabled cards
+                  _soundService.playInvalidTap();
+                },
           child: widget.child,
         ),
       ),

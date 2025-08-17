@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/pitch_service.dart';
 import '../state/lobby_store.dart';
 import 'table_screen.dart';
+import 'widgets/settings_sheet.dart';
 
 class LobbyScreen extends StatelessWidget {
   const LobbyScreen({super.key});
@@ -44,6 +45,11 @@ class _LobbyBody extends StatelessWidget {
       appBar: AppBar(
         title: Text(fullTitle),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () => SettingsSheet.show(context),
+          ),
           if (showSignOut)
             IconButton(
               icon: const Icon(Icons.logout),

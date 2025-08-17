@@ -2,12 +2,14 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../services/pitch_service.dart';
+import '../services/sound_service.dart';
 
 class TableStore extends ChangeNotifier {
   TableStore(this._service, this.tableId);
 
   final PitchService _service;
   final String tableId;
+  final SoundService _soundService = SoundService();
   StreamSubscription<void>? _sub;
 
   TableDetails? _table;
@@ -19,6 +21,8 @@ class TableStore extends ChangeNotifier {
   List<ReplacementEvent> _replacements = const [];
   List<TrickSnapshot> _tricks = const [];
   final List<TrickSnapshot> _tricksPending = [];
+  // Track last known trick count to detect new completions
+  int _lastTrickCount = 0;
   // Local, in-memory pending bidding actions (demo in mock)
   final List<Map<String, dynamic>> _biddingPending = [];
   String? _selectedBidPos;
@@ -134,11 +138,12 @@ class TableStore extends ChangeNotifier {
   // If any replacement events exist for all four seats, assume locked
   final seatsDone = _replacements.map((r) => r.pos).toSet();
   _replacementsLocked = seatsDone.length >= 4;
-      try {
-        _tricks = await _service.fetchTricks(handId);
-      } catch (_) {
-        _tricks = const [];
-      }
+    try {
+      _tricks = await _service.fetchTricks(handId);
+      _checkForNewTrickWins();
+    } catch (_) {
+      _tricks = const [];
+    }
   _tricksPending.clear();
       try {
         _handState = await _service.fetchHandState(handId);
@@ -177,6 +182,7 @@ class TableStore extends ChangeNotifier {
     } catch (_) {}
     try {
       _tricks = await _service.fetchTricks(handId);
+      _checkForNewTrickWins();
     } catch (_) {}
     try {
       _handState = await _service.fetchHandState(handId);
@@ -328,6 +334,33 @@ class TableStore extends ChangeNotifier {
   }) {
     final nextIndex = tricksAll.length;
     _tricksPending.add(TrickSnapshot(nextIndex, leader, plays, winner, lastTrick));
+    
+    // Play trick win sound if the current user won
+    final myPos = mySeatPos;
+    if (myPos != null && winner == myPos && plays.length == 4) {
+      // Trick completed and user won
+      _soundService.playTrickWin();
+    }
+    
     notifyListeners();
+  }
+
+  /// Check for new completed tricks where current user won
+  void _checkForNewTrickWins() {
+    final myPos = mySeatPos;
+    if (myPos == null) return;
+
+    final currentTrickCount = _tricks.length;
+    if (currentTrickCount > _lastTrickCount) {
+      // Check if any new tricks were won by the current user
+      for (int i = _lastTrickCount; i < currentTrickCount; i++) {
+        final trick = _tricks[i];
+        if (trick.winner == myPos && trick.plays.length == 4) {
+          _soundService.playTrickWin();
+          break; // Only play once per refresh cycle
+        }
+      }
+    }
+    _lastTrickCount = currentTrickCount;
   }
 }

@@ -2,18 +2,24 @@
 // Provides offline functionality for mock mode
 
 const CACHE_NAME = 'pitch-game-v1';
-const OFFLINE_URL = '/';
+const OFFLINE_URL = './';
+
+// Get the app's base path for proper URL handling
+const getBasePath = () => {
+  const baseElement = self.location.pathname;
+  return baseElement.endsWith('/') ? baseElement : baseElement + '/';
+};
 
 // Resources to cache for offline functionality
 const CACHE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/favicon.png',
-  '/icons/Icon-192.png',
-  '/icons/Icon-512.png',
-  '/icons/Icon-maskable-192.png',
-  '/icons/Icon-maskable-512.png',
+  './',
+  './index.html',
+  './manifest.json',
+  './favicon.png',
+  './icons/Icon-192.png',
+  './icons/Icon-512.png',
+  './icons/Icon-maskable-192.png',
+  './icons/Icon-maskable-512.png',
   // Flutter web files will be added dynamically
 ];
 

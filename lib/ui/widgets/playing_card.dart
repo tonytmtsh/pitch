@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:playing_cards/playing_cards.dart' as pc;
 import 'card_slide_animation.dart';
 import '../../services/sound_service.dart';
 import '../../state/settings_store.dart';
@@ -13,6 +14,7 @@ class PlayingCardView extends StatelessWidget {
     this.faceUp = true,
     this.highlight = false,
     this.disabled = false,
+  this.highlightColor,
   });
 
   final String code;
@@ -20,33 +22,31 @@ class PlayingCardView extends StatelessWidget {
   final bool faceUp;
   final bool highlight;
   final bool disabled;
+  final Color? highlightColor;
 
   @override
   Widget build(BuildContext context) {
     final size = Size(width, width * 1.4);
-    final radius = BorderRadius.circular(8);
     final (rank, suitChar) = _parse(code);
-    final (suit, color) = _suitInfo(suitChar);
+    // Map code to playing_cards model
+    final pcSuit = _toPcSuit(suitChar);
+    final pcValue = _toPcValue(rank);
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(8),
+      side: BorderSide(
+        color: highlight ? (highlightColor ?? Colors.amber) : Colors.black26,
+        width: highlight ? 2 : 1,
+      ),
+    );
 
-    return Opacity(
-      opacity: disabled ? 0.45 : 1,
-      child: Container(
-        width: size.width,
-        height: size.height,
-        decoration: BoxDecoration(
-          color: faceUp ? Colors.white : const Color(0xFF0D47A1),
-          borderRadius: radius,
-          border: Border.all(
-            color: highlight ? Colors.teal : Colors.black26,
-            width: highlight ? 2 : 1,
-          ),
-          boxShadow: const [
-            BoxShadow(blurRadius: 4, offset: Offset(0, 2), color: Colors.black12),
-          ],
-        ),
-        child: faceUp
-            ? _Face(rank: rank, suit: suit, color: color)
-            : const _BackPattern(),
+    return SizedBox(
+      width: size.width,
+      height: size.height,
+      child: pc.PlayingCardView(
+        card: pc.PlayingCard(pcSuit, pcValue),
+        showBack: !faceUp,
+        elevation: 3.0,
+        shape: shape,
       ),
     );
   }
@@ -58,20 +58,53 @@ class PlayingCardView extends StatelessWidget {
     return (rank, suit);
   }
 
-  (String, Color) _suitInfo(String suit) {
-    switch (suit) {
+  pc.Suit _toPcSuit(String s) {
+    switch (s) {
       case 'H':
-        return ('♥', Colors.red.shade700);
+        return pc.Suit.hearts;
       case 'D':
-        return ('♦', Colors.red.shade700);
+        return pc.Suit.diamonds;
       case 'C':
-        return ('♣', Colors.black87);
+        return pc.Suit.clubs;
       case 'S':
-        return ('♠', Colors.black87);
       default:
-        return ('?', Colors.black54);
+        return pc.Suit.spades;
     }
   }
+
+  pc.CardValue _toPcValue(String r) {
+    switch (r) {
+      case 'A':
+        return pc.CardValue.ace;
+      case 'K':
+        return pc.CardValue.king;
+      case 'Q':
+        return pc.CardValue.queen;
+      case 'J':
+        return pc.CardValue.jack;
+      case '10':
+        return pc.CardValue.ten;
+      case '9':
+        return pc.CardValue.nine;
+      case '8':
+        return pc.CardValue.eight;
+      case '7':
+        return pc.CardValue.seven;
+      case '6':
+        return pc.CardValue.six;
+      case '5':
+        return pc.CardValue.five;
+      case '4':
+        return pc.CardValue.four;
+      case '3':
+        return pc.CardValue.three;
+      case '2':
+      default:
+        return pc.CardValue.two;
+    }
+  }
+
+  // Using the package's default style so cards look like the demo
 }
 
 class CardButton extends StatefulWidget {
@@ -161,77 +194,4 @@ class _CardButtonState extends State<CardButton> {
   }
 }
 
-class _Face extends StatelessWidget {
-  const _Face({required this.rank, required this.suit, required this.color});
-  final String rank;
-  final String suit;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final textColor = color;
-    final rankStyle = TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 16);
-    final suitStyle = TextStyle(color: textColor, fontSize: 14);
-    return Stack(
-      children: [
-        // Top-left
-        Positioned(
-          left: 6,
-          top: 6,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(rank, style: rankStyle),
-              Text(suit, style: suitStyle),
-            ],
-          ),
-        ),
-        // Bottom-right (rotated)
-        Positioned(
-          right: 6,
-          bottom: 6,
-          child: Transform.rotate(
-            angle: 3.14159, // ~pi
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(rank, style: rankStyle),
-                Text(suit, style: suitStyle),
-              ],
-            ),
-          ),
-        ),
-        // Center suit glyph subtle
-        Center(
-          child: Opacity(
-            opacity: 0.1,
-            child: Text(
-              suit,
-              style: TextStyle(fontSize: 48, color: color),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BackPattern extends StatelessWidget {
-  const _BackPattern();
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [const Color(0xFF1565C0), const Color(0xFF0D47A1)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Center(
-        child: Icon(Icons.casino, color: Colors.white70),
-      ),
-    );
-  }
-}
+// Custom face/back removed in favor of playing_cards rendering

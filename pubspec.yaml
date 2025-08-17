@@ -37,6 +37,7 @@ dependencies:
   provider: ^6.0.5
   supabase_flutter: ^2.5.0
   audioplayers: ^6.1.0
+  playing_cards: ^0.4.1+11
 
 dev_dependencies:
   flutter_test:

@@ -268,6 +268,7 @@ class _TableBodyState extends State<_TableBody> {
                           code: c,
                           width: effectiveWidth,
                           highlight: isMyTurn && isLegal,
+                          highlightColor: Colors.amber,
                           disabled: !isLegal,
                         ),
                       );

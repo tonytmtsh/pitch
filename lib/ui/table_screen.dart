@@ -20,16 +20,37 @@ class TableScreen extends StatelessWidget {
   }
 }
 
-class _TableBody extends StatelessWidget {
+class _TableBody extends StatefulWidget {
   const _TableBody({required this.name});
   final String name;
+
+  @override
+  State<_TableBody> createState() => _TableBodyState();
+}
+
+class _TableBodyState extends State<_TableBody> {
+  // Create GlobalKeys for each seat position for animation targeting
+  final GlobalKey _northKey = GlobalKey();
+  final GlobalKey _eastKey = GlobalKey();
+  final GlobalKey _southKey = GlobalKey();
+  final GlobalKey _westKey = GlobalKey();
+
+  GlobalKey? _getTargetKeyForSeat(String? seatPos) {
+    switch (seatPos) {
+      case 'N': return _northKey;
+      case 'E': return _eastKey;
+      case 'S': return _southKey;
+      case 'W': return _westKey;
+      default: return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<TableStore>();
     return Scaffold(
       appBar: AppBar(
-        title: Text(name),
+        title: Text(widget.name),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -170,6 +191,7 @@ class _TableBody extends StatelessWidget {
                 final tricks = store.tricksAll;
                 final active = tricks.isNotEmpty ? tricks.last : null;
                 final isMyTurn = store.currentTurnPos == store.mySeatPos;
+                final targetKey = _getTargetKeyForSeat(store.mySeatPos);
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Wrap(
@@ -179,6 +201,8 @@ class _TableBody extends StatelessWidget {
                       final isLegal = legal.contains(c);
                       return CardButton(
                         enabled: isMyTurn && isLegal && (active?.id != null),
+                        cardCode: c,
+                        targetKey: targetKey,
                         onTap: (isMyTurn && isLegal && active?.id != null)
                             ? () => ctx.read<PitchService>().playCard(active!.id!, c)
                             : null,
@@ -226,7 +250,12 @@ class _TableBody extends StatelessWidget {
               const SizedBox(height: 8),
               const ListTile(title: Text('Current Trick')),
               const Divider(height: 1),
-              _CurrentTrickPanel(),
+              _CurrentTrickPanel(
+                northKey: _northKey,
+                eastKey: _eastKey,
+                southKey: _southKey,
+                westKey: _westKey,
+              ),
               const SizedBox(height: 8),
               const ListTile(title: Text('All Tricks')),
               const Divider(height: 1),
@@ -539,6 +568,18 @@ Map<String, List<String>> _groupBySuit(List<String> cards) {
 }
 
 class _CurrentTrickPanel extends StatelessWidget {
+  const _CurrentTrickPanel({
+    required this.northKey,
+    required this.eastKey,
+    required this.southKey,
+    required this.westKey,
+  });
+
+  final GlobalKey northKey;
+  final GlobalKey eastKey;
+  final GlobalKey southKey;
+  final GlobalKey westKey;
+
   @override
   Widget build(BuildContext context) {
     final store = context.watch<TableStore>();
@@ -547,13 +588,14 @@ class _CurrentTrickPanel extends StatelessWidget {
   final plays = {for (final p in t.plays) p['pos']!: p['card']!};
     final turnPos = store.currentTurnPos;
 
-    Widget seat(String pos) {
+    Widget seat(String pos, GlobalKey key) {
       final card = plays[pos];
       final style = TextStyle(
         fontWeight: turnPos == pos ? FontWeight.bold : FontWeight.normal,
         color: turnPos == pos ? Colors.teal : null,
       );
       return Column(
+        key: key,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(pos, style: style),
@@ -579,17 +621,17 @@ class _CurrentTrickPanel extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         children: [
-          Center(child: seat('N')),
+          Center(child: seat('N', northKey)),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              seat('W'),
-              seat('E'),
+              seat('W', westKey),
+              seat('E', eastKey),
             ],
           ),
           const SizedBox(height: 8),
-          Center(child: seat('S')),
+          Center(child: seat('S', southKey)),
         ],
       ),
     );

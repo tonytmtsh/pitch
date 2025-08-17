@@ -14,6 +14,11 @@ class TableStore extends ChangeNotifier {
   bool _loading = false;
   Object? _error;
 
+  // Demo mode for presentations
+  bool _demoMode = false;
+  Timer? _demoTimer;
+  int _demoStep = 0;
+
   // Hand flow snapshots (mock for now; server wiring later)
   BiddingProgress? _bidding;
   List<ReplacementEvent> _replacements = const [];
@@ -28,6 +33,7 @@ class TableStore extends ChangeNotifier {
   TableDetails? get table => _table;
   bool get loading => _loading;
   Object? get error => _error;
+  bool get demoMode => _demoMode;
   BiddingProgress? get bidding => _bidding;
   List<ReplacementEvent> get replacements => _replacements;
   List<ReplacementEvent> get replacementsAll => [
@@ -220,8 +226,151 @@ class TableStore extends ChangeNotifier {
     return order[turnIdx];
   }
 
+  // --- Demo mode for presentations ---
+  void toggleDemoMode() {
+    if (_demoMode) {
+      stopDemoMode();
+    } else {
+      startDemoMode();
+    }
+  }
+
+  void startDemoMode() {
+    if (_demoMode) return;
+    _demoMode = true;
+    _demoStep = 0;
+    notifyListeners();
+    _scheduleDemoAdvance();
+  }
+
+  void stopDemoMode() {
+    if (!_demoMode) return;
+    _demoMode = false;
+    _demoTimer?.cancel();
+    _demoTimer = null;
+    notifyListeners();
+  }
+
+  void _scheduleDemoAdvance() {
+    _demoTimer?.cancel();
+    if (!_demoMode) return;
+    
+    _demoTimer = Timer(const Duration(seconds: 3), () {
+      if (!_demoMode) return;
+      _advanceDemoStep();
+    });
+  }
+
+  void _advanceDemoStep() {
+    if (!_demoMode) return;
+    
+    // Define demo progression: bidding actions first, then tricks
+    final biddingSteps = [
+      {'pos': 'E', 'bid': 3},
+      {'pos': 'S', 'pass': true},
+      {'pos': 'W', 'bid': 4},
+      {'pos': 'N', 'pass': true},
+    ];
+    
+    final trickSteps = [
+      // Trick 1
+      {'pos': 'W', 'card': 'JD', 'leader': 'W'},
+      {'pos': 'N', 'card': 'AS'},
+      {'pos': 'E', 'card': '4S'},
+      {'pos': 'S', 'card': 'QS', 'winner': 'N'},
+      // Trick 2
+      {'pos': 'N', 'card': 'KD', 'leader': 'N'},
+      {'pos': 'E', 'card': 'QD'},
+      {'pos': 'S', 'card': 'AD'},
+      {'pos': 'W', 'card': '10D', 'winner': 'S'},
+      // Trick 3
+      {'pos': 'S', 'card': 'JH', 'leader': 'S'},
+      {'pos': 'W', 'card': 'QH'},
+      {'pos': 'N', 'card': 'QH'},
+      {'pos': 'E', 'card': '10H', 'winner': 'W'},
+    ];
+    
+    if (_demoStep < biddingSteps.length) {
+      // Advance bidding
+      final action = biddingSteps[_demoStep];
+      if (action['pass'] == true) {
+        submitPass(action['pos'] as String);
+      } else {
+        submitBid(action['pos'] as String, action['bid'] as int);
+      }
+    } else if (_demoStep < biddingSteps.length + trickSteps.length) {
+      // Advance tricks
+      final trickIndex = _demoStep - biddingSteps.length;
+      final step = trickSteps[trickIndex];
+      
+      if (step.containsKey('leader')) {
+        // Start new trick
+        _startDemoTrick(step['leader'] as String);
+      }
+      
+      _addDemoCardPlay(step['pos'] as String, step['card'] as String);
+      
+      if (step.containsKey('winner')) {
+        // Complete trick
+        _completeDemoTrick(step['winner'] as String);
+      }
+    }
+    
+    _demoStep++;
+    
+    // Continue if not finished
+    if (_demoStep < biddingSteps.length + trickSteps.length) {
+      _scheduleDemoAdvance();
+    } else {
+      // Demo complete, restart or stop
+      _demoStep = 0;
+      _scheduleDemoAdvance();
+    }
+  }
+
+  void _startDemoTrick(String leader) {
+    // Clear any pending trick and start fresh
+    if (_tricksPending.isNotEmpty) {
+      _tricksPending.clear();
+    }
+    final nextIndex = tricksAll.length;
+    _tricksPending.add(TrickSnapshot(nextIndex, leader, [], '', false));
+    notifyListeners();
+  }
+
+  void _addDemoCardPlay(String pos, String card) {
+    if (_tricksPending.isEmpty) return;
+    final current = _tricksPending.last;
+    final newPlays = List<Map<String, String>>.from(current.plays);
+    newPlays.add({'pos': pos, 'card': card});
+    
+    _tricksPending[_tricksPending.length - 1] = TrickSnapshot(
+      current.index,
+      current.leader,
+      newPlays,
+      current.winner,
+      current.lastTrick,
+    );
+    notifyListeners();
+  }
+
+  void _completeDemoTrick(String winner) {
+    if (_tricksPending.isEmpty) return;
+    final current = _tricksPending.last;
+    
+    _tricksPending[_tricksPending.length - 1] = TrickSnapshot(
+      current.index,
+      current.leader,
+      current.plays,
+      winner,
+      current.index >= 5, // Last trick is index 5 (6th trick)
+    );
+    notifyListeners();
+  }
+
   @override
   void dispose() {
+    _demoTimer?.cancel();
     _sub?.cancel();
     super.dispose();
   }

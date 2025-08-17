@@ -30,7 +30,13 @@ class _TableBody extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(name),
+        backgroundColor: store.demoMode ? Colors.orange.shade100 : null,
         actions: [
+          IconButton(
+            icon: Icon(store.demoMode ? Icons.pause : Icons.play_arrow),
+            tooltip: store.demoMode ? 'Stop Demo' : 'Start Demo',
+            onPressed: () => context.read<TableStore>().toggleDemoMode(),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
@@ -58,6 +64,25 @@ class _TableBody extends StatelessWidget {
           onRefresh: () => context.read<TableStore>().refresh(),
           child: ListView(
           children: [
+            // Demo mode banner
+            if (store.demoMode)
+              Container(
+                color: Colors.orange.shade50,
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Icon(Icons.play_circle, color: Colors.orange.shade700),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Demo Mode Active - Auto-advancing game',
+                      style: TextStyle(
+                        color: Colors.orange.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const ListTile(title: Text('Seats')),
             const Divider(height: 1),
             ...table.seats.map((seat) {

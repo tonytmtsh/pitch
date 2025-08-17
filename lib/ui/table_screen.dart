@@ -315,7 +315,10 @@ class _TableBody extends StatelessWidget {
                           runSpacing: 6,
                           children: legal
                               .map((c) {
-                                final suit = c.isNotEmpty ? c.substring(c.length - 1) : '';
+                                final suit = (() {
+                                  final match = RegExp(r'^(?:[2-9]|10|[JQKA])([CDHS])$').firstMatch(c);
+                                  return match != null ? match.group(1)! : '';
+                                })();
                                 return ElevatedButton(
                                   onPressed: active.id != null
                                       ? () => svc.playCard(active.id!, c)

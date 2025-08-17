@@ -6,10 +6,14 @@ import 'pitch_service.dart';
 import 'dtos.dart';
 
 class MockPitchService implements PitchService {
+  // Mock current user for testing "You" badge functionality
+  static const String _mockCurrentUserId = 'user_alice_1001';
+  static const String _mockCurrentUserName = 'Alice#1001';
+  
   @override
-  String? currentUserId() => null;
+  String? currentUserId() => _mockCurrentUserId;
   @override
-  bool supportsIdentity() => false;
+  bool supportsIdentity() => true;
   @override
   Future<List<LobbyTable>> fetchLobby() async {
     final raw = await rootBundle.loadString('mock/lobby.json');
@@ -23,8 +27,8 @@ class MockPitchService implements PitchService {
 
   @override
   Future<TableDetails> fetchTable(String tableId) async {
-    // For simplicity, a single representative table snapshot.
-    final raw = await rootBundle.loadString('mock/table_10pt_full.json');
+    // Use mixed presence table to better demonstrate avatar functionality
+    final raw = await rootBundle.loadString('mock/table_mixed_presence.json');
     final map = json.decode(raw) as Map<String, dynamic>;
     final tbl = map['table'] as Map<String, dynamic>;
 
@@ -35,7 +39,10 @@ class MockPitchService implements PitchService {
       final key = order[i];
       final entry = seatsMap[key] as Map<String, dynamic>?
           ?? const <String, dynamic>{};
-      seats.add(Seat(position: i, player: entry['user'] as String?));
+      final playerName = entry['user'] as String?;
+      // Generate a mock userId based on player name for identification
+      final userId = playerName != null ? 'user_${playerName.toLowerCase().replaceAll('#', '_')}' : null;
+      seats.add(Seat(position: i, player: playerName, userId: userId));
     }
 
     return TableDetails(

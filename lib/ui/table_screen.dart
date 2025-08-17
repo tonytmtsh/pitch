@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'widgets/playing_card.dart';
+import 'widgets/user_avatar.dart';
 
 import '../services/pitch_service.dart';
 import '../state/table_store.dart';
@@ -65,15 +66,16 @@ class _TableBody extends StatelessWidget {
               final isMe = myId != null && seat.userId == myId;
               return Column(children: [
                 ListTile(
-                  leading: CircleAvatar(child: Text(label)),
-                  title: Text(
-                    seat.player != null
-                        ? isMe
-                            ? '${seat.player} (You)'
-                            : seat.player!
-                        : 'Open',
+                  leading: UserAvatar(
+                    name: seat.player,
+                    isCurrentUser: isMe,
                   ),
-                  subtitle: Text('Seat $label'),
+                  title: SeatChip(
+                    position: label,
+                    playerName: seat.player,
+                    isCurrentUser: isMe,
+                    isOpen: seat.player == null,
+                  ),
                 ),
                 const Divider(height: 1),
               ]);
@@ -86,12 +88,14 @@ class _TableBody extends StatelessWidget {
               // Existing actions
               ...store.biddingActions.map((a) {
                 final p = a['pos'] as String? ?? '?';
+                final playerName = store.getPlayerNameByPosition(p);
                 final b = a['bid'];
                 final pass = a['pass'] == true;
                 final text = pass ? 'Pass' : 'Bid $b';
                 return ListTile(
-                  leading: CircleAvatar(child: Text(p)),
+                  leading: UserAvatar(name: playerName),
                   title: Text(text),
+                  subtitle: Text('Seat $p'),
                 );
               }),
               // Simple input controls (gated by turn)
@@ -214,9 +218,9 @@ class _TableBody extends StatelessWidget {
                   ),
                 ),
               ...store.replacementsAll.map((r) => ListTile(
-                    leading: CircleAvatar(child: Text(r.pos)),
+                    leading: UserAvatar(name: store.getPlayerNameByPosition(r.pos)),
                     title: Text('Discarded: ${r.discarded.join(', ')}'),
-                    subtitle: Text('Drawn: ${r.drawn.join(', ')}'),
+                    subtitle: Text('Drawn: ${r.drawn.join(', ')} (Seat ${r.pos})'),
                   )),
               if (!store.replacementsLocked) _ReplacementInput(),
               const Divider(height: 1),
@@ -235,8 +239,9 @@ class _TableBody extends StatelessWidget {
                     subtitle: Text('Leader ${t.leader}'),
                     children: t.plays
                         .map((p) => ListTile(
-                              leading: CircleAvatar(child: Text(p['pos']!)),
+                              leading: UserAvatar(name: store.getPlayerNameByPosition(p['pos']!)),
                               title: Text(p['card']!),
+                              subtitle: Text('Seat ${p['pos']!}'),
                             ))
                         .toList(),
                   )),

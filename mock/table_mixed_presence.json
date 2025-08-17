@@ -1,0 +1,15 @@
+{
+  "table": {
+    "id": "33333333-3333-3333-3333-333333333333",
+    "name": "Mixed Presence Table",
+    "variant": "10_point",
+    "status": "open",
+    "target_score": 50,
+    "seats": {
+      "N": {"user": "Alice#1001"},
+      "E": {},
+      "S": {"user": "Charlie#1007"},
+      "W": {}
+    }
+  }
+}

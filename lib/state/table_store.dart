@@ -96,6 +96,16 @@ class TableStore extends ChangeNotifier {
     return null;
   }
 
+  /// Get player name by seat position (N/E/S/W)
+  String? getPlayerNameByPosition(String position) {
+    final t = _table;
+    if (t == null) return null;
+    const order = ['N', 'E', 'S', 'W'];
+    final index = order.indexOf(position);
+    if (index < 0 || index >= t.seats.length) return null;
+    return t.seats[index].player;
+  }
+
   String get nextBidPos {
     final order = biddingOrder;
     if (biddingActions.isEmpty) return order.first;

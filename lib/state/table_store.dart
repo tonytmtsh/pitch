@@ -54,6 +54,60 @@ class TableStore extends ChangeNotifier {
     _variant = v;
     _loadScoring();
   }
+
+  // Game log panel state
+  bool _logPanelExpanded = false;
+  bool get logPanelExpanded => _logPanelExpanded;
+  void setLogPanelExpanded(bool expanded) {
+    _logPanelExpanded = expanded;
+    notifyListeners();
+  }
+
+  // Get all game events in chronological order
+  List<GameLogEvent> get gameLogEvents {
+    final events = <GameLogEvent>[];
+    
+    // Add bidding events
+    for (int i = 0; i < biddingActions.length; i++) {
+      final action = biddingActions[i];
+      final pos = action['pos'] as String? ?? '?';
+      final bid = action['bid'] as int?;
+      final pass = action['pass'] == true;
+      final description = pass ? '$pos: Pass' : '$pos: Bid $bid';
+      events.add(GameLogEvent(
+        type: GameLogEventType.bid,
+        sequence: i,
+        description: description,
+        position: pos,
+        relatedTrickIndex: null,
+      ));
+    }
+    
+    // Add replacement summary (one event for all replacements)
+    if (replacementsAll.isNotEmpty) {
+      final count = replacementsAll.length;
+      events.add(GameLogEvent(
+        type: GameLogEventType.replacement,
+        sequence: 0,
+        description: 'Replacements completed ($count players)',
+        position: null,
+        relatedTrickIndex: null,
+      ));
+    }
+    
+    // Add trick events
+    for (final trick in tricksAll) {
+      events.add(GameLogEvent(
+        type: GameLogEventType.trick,
+        sequence: trick.index,
+        description: 'Trick ${trick.index + 1}: ${trick.winner} wins',
+        position: trick.winner,
+        relatedTrickIndex: trick.index,
+      ));
+    }
+    
+    return events;
+  }
   List<Map<String, dynamic>> get biddingActions => [
         ...?_bidding?.actions,
         ..._biddingPending,

@@ -139,3 +139,22 @@ class ScoringBreakdown {
     required this.delta,
   });
 }
+
+// Game log models for chronological event display
+enum GameLogEventType { bid, replacement, trick }
+
+class GameLogEvent {
+  final GameLogEventType type;
+  final int sequence;
+  final String description;
+  final String? position;
+  final int? relatedTrickIndex;
+
+  GameLogEvent({
+    required this.type,
+    required this.sequence,
+    required this.description,
+    this.position,
+    this.relatedTrickIndex,
+  });
+}

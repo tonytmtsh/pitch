@@ -285,7 +285,10 @@ class _TableBody extends StatelessWidget {
                 if (backend == 'server') return const SizedBox.shrink();
                 return _TrickInput();
               }),
-            ],
+            // Game Log Panel
+            const SizedBox(height: 8),
+            _GameLogPanel(),
+            // Scoring section
             if (store.scoring != null) ...[
               const SizedBox(height: 8),
               ListTile(
@@ -626,6 +629,82 @@ class _BidRowState extends State<_BidRow> {
             child: const Text('Bid'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GameLogPanel extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final store = context.watch<TableStore>();
+    final events = store.gameLogEvents;
+    
+    if (events.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    return ExpansionTile(
+      title: const Text('Game Log'),
+      subtitle: Text('${events.length} events'),
+      initiallyExpanded: store.logPanelExpanded,
+      onExpansionChanged: (expanded) {
+        store.setLogPanelExpanded(expanded);
+      },
+      children: events.map((event) => _GameLogEventTile(event: event)).toList(),
+    );
+  }
+}
+
+class _GameLogEventTile extends StatelessWidget {
+  const _GameLogEventTile({required this.event});
+  
+  final GameLogEvent event;
+  
+  @override
+  Widget build(BuildContext context) {
+    IconData icon;
+    Color? iconColor;
+    
+    switch (event.type) {
+      case GameLogEventType.bid:
+        icon = Icons.gavel;
+        iconColor = Colors.blue;
+        break;
+      case GameLogEventType.replacement:
+        icon = Icons.swap_horiz;
+        iconColor = Colors.orange;
+        break;
+      case GameLogEventType.trick:
+        icon = Icons.style;
+        iconColor = Colors.green;
+        break;
+    }
+    
+    return ListTile(
+      dense: true,
+      leading: CircleAvatar(
+        radius: 16,
+        backgroundColor: iconColor?.withOpacity(0.1),
+        child: Icon(icon, size: 16, color: iconColor),
+      ),
+      title: Text(event.description),
+      onTap: event.relatedTrickIndex != null 
+        ? () => _scrollToTrick(context, event.relatedTrickIndex!)
+        : null,
+      trailing: event.relatedTrickIndex != null 
+        ? const Icon(Icons.arrow_forward, size: 16)
+        : null,
+    );
+  }
+  
+  void _scrollToTrick(BuildContext context, int trickIndex) {
+    // Find the tricks section and highlight it
+    // For now, just show a snackbar as a placeholder for the jump functionality
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Jump to Trick ${trickIndex + 1}'),
+        duration: const Duration(seconds: 1),
       ),
     );
   }

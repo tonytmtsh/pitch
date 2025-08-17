@@ -110,14 +110,20 @@ class _CardButtonState extends State<CardButton> {
           customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           onTap: widget.enabled && widget.onTap != null
               ? () async {
-                  final settings = context.read<SettingsStore>();
-                  
+                  // SettingsStore is optional in tests; guard lookup.
+                  SettingsStore? settings;
+                  try {
+                    settings = context.read<SettingsStore>();
+                  } catch (_) {
+                    settings = null;
+                  }
+
                   setState(() => _scale = 0.96);
                   await Future.delayed(const Duration(milliseconds: 60));
                   setState(() => _scale = 1.0);
                   
                   // Play sound if enabled
-                  if (settings.soundsEnabled) {
+                  if (settings?.soundsEnabled == true) {
                     SoundService().playCardSound();
                   }
                   
@@ -137,9 +143,14 @@ class _CardButtonState extends State<CardButton> {
                   }
                 }
               : () async {
-                  // Play invalid sound for disabled interactions
-                  final settings = context.read<SettingsStore>();
-                  if (settings.soundsEnabled) {
+                  // Play invalid sound for disabled interactions (optional SettingsStore)
+                  SettingsStore? settings;
+                  try {
+                    settings = context.read<SettingsStore>();
+                  } catch (_) {
+                    settings = null;
+                  }
+                  if (settings?.soundsEnabled == true) {
                     SoundService().playInvalidSound();
                   }
                 },

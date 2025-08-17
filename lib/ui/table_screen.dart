@@ -22,12 +22,17 @@ class TableScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (ctx) {
-        final settings = ctx.read<SettingsStore>();
+        SettingsStore? settings;
+        try {
+          settings = ctx.read<SettingsStore>();
+        } catch (_) {
+          settings = null;
+        }
         return TableStore(
           ctx.read<PitchService>(), 
           tableId,
           onTrickWin: () {
-            if (settings.soundsEnabled) {
+            if (settings?.soundsEnabled == true) {
               SoundService().playTrickWinSound();
             }
           },

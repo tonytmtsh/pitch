@@ -11,8 +11,15 @@ class CardSlideAnimation {
     required VoidCallback onComplete,
     Duration duration = const Duration(milliseconds: 250),
   }) async {
-    final overlay = Overlay.of(context);
+    // Try to obtain an overlay; be resilient in test environments.
+    final overlay = Overlay.maybeOf(context, rootOverlay: true) ?? Overlay.of(context, rootOverlay: true);
     late OverlayEntry entry;
+    var completed = false;
+    void completeOnce() {
+      if (completed) return;
+      completed = true;
+      onComplete();
+    }
     
     entry = OverlayEntry(
       builder: (context) => _CardSlideOverlay(
@@ -21,13 +28,25 @@ class CardSlideAnimation {
         targetKey: targetKey,
         duration: duration,
         onComplete: () {
-          entry.remove();
-          onComplete();
+          if (entry.mounted) entry.remove();
+          completeOnce();
         },
       ),
     );
     
-    overlay.insert(entry);
+    // If no overlay is available, complete immediately
+    if (overlay.mounted) {
+      overlay.insert(entry);
+  // Defensive: if animations fail to start/complete, force completion shortly after duration
+  Future<void>.delayed(duration + const Duration(milliseconds: 20)).then((_) {
+        if (!completed) {
+          if (entry.mounted) entry.remove();
+          completeOnce();
+        }
+      });
+    } else {
+      completeOnce();
+    }
   }
 }
 

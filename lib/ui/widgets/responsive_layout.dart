@@ -19,7 +19,7 @@ class ResponsiveLayout {
   }
 
   static bool showGridLayout(BuildContext context) {
-    return MediaQuery.of(context).size.width > tabletBreakpoint;
+  return MediaQuery.of(context).size.width >= tabletBreakpoint;
   }
 }
 

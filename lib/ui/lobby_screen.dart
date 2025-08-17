@@ -116,7 +116,7 @@ class _LobbyBody extends StatelessWidget {
         color: Colors.grey[50],
         border: const Border(bottom: BorderSide(color: Colors.grey, width: 0.5)),
       ),
-      child: Column(
+  child: Column(
         children: [
           // Search field
           TextField(
@@ -131,11 +131,14 @@ class _LobbyBody extends StatelessWidget {
           const SizedBox(height: 12),
           // Filter dropdowns
           ResponsiveLayout.isMobile(context)
-              ? Column(children: [
-                  _buildFilterRow(store),
-                  const SizedBox(height: 8),
-                  _buildSortAndClearRow(store),
-                ])
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildFilterColumn(store),
+                    const SizedBox(height: 8),
+                    _buildSortAndClearRowMobile(store),
+                  ],
+                )
               : Row(children: [
                   ..._buildFilterRow(store),
                   const Spacer(),
@@ -146,11 +149,50 @@ class _LobbyBody extends StatelessWidget {
     );
   }
 
+  Widget _buildFilterColumn(LobbyStore store) {
+    return Column(
+      children: [
+        DropdownButtonFormField<String>(
+          value: store.variantFilter,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Variant',
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          items: const [
+            DropdownMenuItem(value: 'all', child: Text('All Variants')),
+            DropdownMenuItem(value: '4_point', child: Text('4-Point')),
+            DropdownMenuItem(value: '10_point', child: Text('10-Point')),
+          ],
+          onChanged: (value) => value != null ? store.setVariantFilter(value) : null,
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: store.statusFilter,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Status',
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          items: const [
+            DropdownMenuItem(value: 'all', child: Text('All Status')),
+            DropdownMenuItem(value: 'open', child: Text('Open')),
+            DropdownMenuItem(value: 'playing', child: Text('Playing')),
+          ],
+          onChanged: (value) => value != null ? store.setStatusFilter(value) : null,
+        ),
+      ],
+    );
+  }
+
   List<Widget> _buildFilterRow(LobbyStore store) {
     return [
       Expanded(
         child: DropdownButtonFormField<String>(
           value: store.variantFilter,
+          isExpanded: true,
           decoration: const InputDecoration(
             labelText: 'Variant',
             border: OutlineInputBorder(),
@@ -168,6 +210,7 @@ class _LobbyBody extends StatelessWidget {
       Expanded(
         child: DropdownButtonFormField<String>(
           value: store.statusFilter,
+          isExpanded: true,
           decoration: const InputDecoration(
             labelText: 'Status',
             border: OutlineInputBorder(),
@@ -188,6 +231,7 @@ class _LobbyBody extends StatelessWidget {
     return [
       DropdownButton<LobbySort>(
         value: store.sort,
+        isExpanded: false,
         items: const [
           DropdownMenuItem(value: LobbySort.nameAsc, child: Text('Name A-Z')),
           DropdownMenuItem(value: LobbySort.nameDesc, child: Text('Name Z-A')),
@@ -204,6 +248,34 @@ class _LobbyBody extends StatelessWidget {
         label: const Text('Clear'),
       ),
     ];
+  }
+
+  // Mobile-friendly layout for sort + clear controls
+  Widget _buildSortAndClearRowMobile(LobbyStore store) {
+    return Row(
+      children: [
+        Expanded(
+          child: DropdownButton<LobbySort>(
+            value: store.sort,
+            isExpanded: true,
+            items: const [
+              DropdownMenuItem(value: LobbySort.nameAsc, child: Text('Name A-Z')),
+              DropdownMenuItem(value: LobbySort.nameDesc, child: Text('Name Z-A')),
+              DropdownMenuItem(value: LobbySort.leastFull, child: Text('Least Full')),
+              DropdownMenuItem(value: LobbySort.mostFull, child: Text('Most Full')),
+              DropdownMenuItem(value: LobbySort.openFirst, child: Text('Open First')),
+            ],
+            onChanged: (value) => value != null ? store.setSort(value) : null,
+          ),
+        ),
+        const SizedBox(width: 8),
+        TextButton.icon(
+          onPressed: store.clearFilters,
+          icon: const Icon(Icons.clear),
+          label: const Text('Clear'),
+        ),
+      ],
+    );
   }
 
   Widget _buildResultsCounter(LobbyStore store) {

@@ -48,6 +48,12 @@ class LobbyStore extends ChangeNotifier {
     notifyListeners();
     try {
       _tables = await _service.fetchLobby();
+      assert(() {
+        // Helpful in tests to see what loaded
+        // ignore: avoid_print
+        print('[LobbyStore] Loaded \'${_tables.length}\' tables');
+        return true;
+      }());
     } catch (e) {
       _error = e;
     } finally {

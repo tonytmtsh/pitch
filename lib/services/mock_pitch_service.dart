@@ -127,8 +127,8 @@ class MockPitchService implements PitchService {
 
   @override
   Future<HandState> fetchHandState(String handId) async {
-    // Mock: assume replacements locked after sample data, trump hearts
-    return const HandState(replacementsLocked: true, trumpSuit: 'H');
+    // Mock: assume replacements not locked initially to allow testing
+    return const HandState(replacementsLocked: false, trumpSuit: 'H');
   }
 
   @override
@@ -145,8 +145,9 @@ class MockPitchService implements PitchService {
 
   @override
   Future<List<String>> requestReplacements(String handId, List<String> discarded) async {
-    // Mock: echo back the same count of drawn placeholder cards
-    return List<String>.filled(discarded.length, '??');
+    // Mock: return some placeholder drawn cards that make sense
+    final replacements = ['7D', '8H', '6C', '5S', '4D', '3H'];
+    return replacements.take(discarded.length).toList();
   }
 
   @override

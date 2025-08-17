@@ -24,6 +24,8 @@ class TableStore extends ChangeNotifier {
   String? _selectedBidPos;
   // Local, in-memory pending replacements (demo in mock)
   final List<ReplacementEvent> _replacementsPending = [];
+  // Card selection for replacements
+  final Set<String> _selectedCardsForDiscard = <String>{};
 
   TableDetails? get table => _table;
   bool get loading => _loading;
@@ -47,6 +49,12 @@ class TableStore extends ChangeNotifier {
   HandState? get handState => _handState;
   List<String> _myCards = const [];
   List<String> get myCards => _myCards;
+  Set<String> get selectedCardsForDiscard => _selectedCardsForDiscard;
+  bool get hasReplacementInProgress => _replacementsPending.any((r) => r.pos == mySeatPos);
+  bool get canRequestReplacements {
+    // Can request if we have cards, no replacement in progress, and replacements aren't locked
+    return myCards.isNotEmpty && !hasReplacementInProgress && !replacementsLocked;
+  }
   String _variant = '10_point';
   String get variant => _variant;
   void setVariant(String v) {
@@ -131,6 +139,7 @@ class TableStore extends ChangeNotifier {
         _replacements = const [];
       }
   _replacementsPending.clear();
+  _selectedCardsForDiscard.clear();
   // If any replacement events exist for all four seats, assume locked
   final seatsDone = _replacements.map((r) => r.pos).toSet();
   _replacementsLocked = seatsDone.length >= 4;
@@ -287,6 +296,50 @@ class TableStore extends ChangeNotifier {
   }
 
   // --- Local demo replacements (mock only; not persisted) ---
+  void toggleCardSelection(String card) {
+    if (_selectedCardsForDiscard.contains(card)) {
+      _selectedCardsForDiscard.remove(card);
+    } else {
+      _selectedCardsForDiscard.add(card);
+    }
+    notifyListeners();
+  }
+
+  void clearCardSelection() {
+    _selectedCardsForDiscard.clear();
+    notifyListeners();
+  }
+
+  void requestReplacementsForSelected() {
+    if (_selectedCardsForDiscard.isEmpty) return;
+    final effectivePos = mySeatPos ?? 'N';
+    final discarded = _selectedCardsForDiscard.toList();
+    
+    // Create pending replacement with selected cards
+    final pending = ReplacementEvent(effectivePos, List.of(discarded), const []);
+    _replacementsPending.add(pending);
+    
+    // Clear selection since we've submitted
+    _selectedCardsForDiscard.clear();
+    notifyListeners();
+    
+    final handId = _table?.handId;
+    if (handId != null) {
+      _service.requestReplacements(handId, discarded).then((drawnServer) {
+        // Update the pending entry's drawn cards with server result
+        final idx = _replacementsPending.indexOf(pending);
+        if (idx >= 0) {
+          _replacementsPending[idx] = ReplacementEvent(effectivePos, pending.discarded, List.of(drawnServer));
+          notifyListeners();
+        }
+      }).catchError((e) {
+        _replacementsPending.remove(pending);
+        _error = e;
+        notifyListeners();
+      });
+    }
+  }
+
   void addReplacement(String pos, List<String> discarded, List<String> drawn) {
     final effectivePos = mySeatPos ?? pos;
     final pending = ReplacementEvent(effectivePos, List.of(discarded), List.of(drawn));

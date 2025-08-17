@@ -218,7 +218,7 @@ class _TableBody extends StatelessWidget {
                     title: Text('Discarded: ${r.discarded.join(', ')}'),
                     subtitle: Text('Drawn: ${r.drawn.join(', ')}'),
                   )),
-              if (!store.replacementsLocked) _ReplacementInput(),
+              if (!store.replacementsLocked) _ReplacementSelection(),
               const Divider(height: 1),
             ],
             // Tricks section
@@ -350,6 +350,153 @@ class _TableBody extends StatelessWidget {
 class _BidRow extends StatefulWidget {
   @override
   State<_BidRow> createState() => _BidRowState();
+}
+
+class _ReplacementSelection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final store = context.watch<TableStore>();
+    final myPos = store.mySeatPos;
+    
+    // Only show replacement selection for the current player
+    if (myPos == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Text('You must be seated to request replacements'),
+      );
+    }
+
+    // Check if replacements are locked globally
+    if (store.replacementsLocked) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Text('Replacements have been locked'),
+      );
+    }
+
+    // If player already has replacement in progress, show status
+    if (store.hasReplacementInProgress) {
+      final myReplacement = store.replacementsAll
+          .cast<ReplacementEvent?>()
+          .firstWhere((r) => r?.pos == myPos, orElse: () => null);
+      
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Your replacement (Seat $myPos):', 
+                 style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            if (myReplacement != null) ...[
+              Text('Discarded: ${myReplacement.discarded.join(', ')}'),
+              const SizedBox(height: 4),
+              if (myReplacement.drawn.isNotEmpty) ...[
+                const Text('Drawn cards:', style: TextStyle(fontWeight: FontWeight.w500)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: myReplacement.drawn.map((card) => 
+                    PlayingCardView(
+                      code: card,
+                      width: 64,
+                      highlight: true, // Highlight replacement cards
+                    )
+                  ).toList(),
+                ),
+              ] else ...[
+                const Text('Waiting for drawn cards...', 
+                           style: TextStyle(fontStyle: FontStyle.italic)),
+              ],
+            ],
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Select cards to discard (Seat $myPos):', 
+               style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          
+          // Show hand cards with selection capability
+          if (store.myCards.isNotEmpty) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: store.myCards.map((card) {
+                final isSelected = store.selectedCardsForDiscard.contains(card);
+                return Semantics(
+                  label: 'Card $card${isSelected ? ' selected' : ''}',
+                  button: true,
+                  selected: isSelected,
+                  child: CardButton(
+                    enabled: true,
+                    onTap: () => context.read<TableStore>().toggleCardSelection(card),
+                    child: PlayingCardView(
+                      code: card,
+                      width: 64,
+                      highlight: isSelected,
+                      disabled: false,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+          ],
+          
+          // Selection summary and action buttons
+          if (store.selectedCardsForDiscard.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Selected to discard (${store.selectedCardsForDiscard.length}):',
+                       style: const TextStyle(fontWeight: FontWeight.w500)),
+                  Text(store.selectedCardsForDiscard.join(', ')),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        onPressed: () => context.read<TableStore>().requestReplacementsForSelected(),
+                        child: const Text('Request Replacements'),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: () => context.read<TableStore>().clearCardSelection(),
+                        child: const Text('Clear Selection'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('Tap cards from your hand to select them for discard'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _ReplacementInput extends StatefulWidget {

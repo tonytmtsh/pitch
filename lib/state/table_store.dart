@@ -24,6 +24,10 @@ class TableStore extends ChangeNotifier {
   String? _selectedBidPos;
   // Local, in-memory pending replacements (demo in mock)
   final List<ReplacementEvent> _replacementsPending = [];
+  
+  // Win reveal animation state
+  String? _trickWinRevealId; // ID of trick currently showing win reveal
+  DateTime? _trickWinRevealStartTime;
 
   TableDetails? get table => _table;
   bool get loading => _loading;
@@ -48,6 +52,18 @@ class TableStore extends ChangeNotifier {
   List<String> _myCards = const [];
   List<String> get myCards => _myCards;
   String _variant = '10_point';
+  
+  // Win reveal getters
+  String? get trickWinRevealId => _trickWinRevealId;
+  bool get showingTrickWinReveal => _trickWinRevealId != null;
+  TrickSnapshot? get trickWinRevealSnapshot {
+    if (_trickWinRevealId == null) return null;
+    try {
+      return tricksAll.firstWhere((t) => '${t.index}' == _trickWinRevealId);
+    } catch (e) {
+      return null;
+    }
+  }
   String get variant => _variant;
   void setVariant(String v) {
     if (_variant == v) return;
@@ -327,7 +343,34 @@ class TableStore extends ChangeNotifier {
     bool lastTrick = false,
   }) {
     final nextIndex = tricksAll.length;
-    _tricksPending.add(TrickSnapshot(nextIndex, leader, plays, winner, lastTrick));
+    final trick = TrickSnapshot(nextIndex, leader, plays, winner, lastTrick);
+    _tricksPending.add(trick);
+    
+    // Trigger win reveal animation if trick is complete (4 plays)
+    if (plays.length == 4) {
+      _startTrickWinReveal('$nextIndex');
+    }
+    
+    notifyListeners();
+  }
+  
+  void _startTrickWinReveal(String trickId) {
+    _trickWinRevealId = trickId;
+    _trickWinRevealStartTime = DateTime.now();
+    
+    // Auto-hide the win reveal after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (_trickWinRevealId == trickId) {
+        _trickWinRevealId = null;
+        _trickWinRevealStartTime = null;
+        notifyListeners();
+      }
+    });
+  }
+  
+  void dismissTrickWinReveal() {
+    _trickWinRevealId = null;
+    _trickWinRevealStartTime = null;
     notifyListeners();
   }
 }

@@ -40,6 +40,62 @@ void main() {
   // (Tricks may be off-screen in tests; not asserting here.)
   });
 
+  testWidgets('Trick win reveal animation shows on completed trick', (tester) async {
+    await tester.pumpWidget(
+      Provider<PitchService>.value(
+        value: MockPitchService(),
+        child: const MaterialApp(
+          home: TableScreen(tableId: 't1', name: 'Demo Table'),
+        ),
+      ),
+    );
+
+    // Wait for async loads
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // Scroll down to find the trick input section
+    await tester.dragUntilVisible(
+      find.text('Add trick'),
+      find.byType(ListView),
+      const Offset(0, -100),
+    );
+
+    // Fill in a complete trick (4 cards)
+    final cardFields = find.byWidgetPredicate(
+      (widget) => widget is TextField && 
+                  widget.decoration?.labelText?.contains('Card') == true
+    );
+    
+    expect(cardFields, findsNWidgets(4));
+    
+    // Enter cards for all 4 positions
+    await tester.enterText(cardFields.at(0), 'AS');
+    await tester.enterText(cardFields.at(1), 'KH');
+    await tester.enterText(cardFields.at(2), 'QD');
+    await tester.enterText(cardFields.at(3), 'JC');
+    
+    // Tap Add button to trigger trick completion
+    await tester.tap(find.text('Add'));
+    await tester.pump();
+    
+    // Verify win reveal banner appears
+    expect(find.textContaining('Trick '), findsOneWidget);
+    expect(find.textContaining('won by'), findsOneWidget);
+    expect(find.byIcon(Icons.emoji_events), findsOneWidget);
+    
+    // Verify next leader indicator appears
+    expect(find.textContaining('Next leader:'), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
+    
+    // Test dismissing the win reveal by tapping
+    await tester.tap(find.textContaining('won by'));
+    await tester.pump();
+    
+    // Win reveal should be dismissed (banner should disappear)
+    expect(find.textContaining('won by'), findsNothing);
+  });
+
   // Interaction test intentionally deferred; the scrolling/async of web ListView
   // makes it flaky in CI. We'll add integration tests later.
 }

@@ -554,6 +554,15 @@ class _CurrentTrickPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = context.watch<TableStore>();
     final t = store.currentTrick;
+    
+    // Show win reveal animation if one is active
+    if (store.showingTrickWinReveal) {
+      return GestureDetector(
+        onTap: () => store.dismissTrickWinReveal(),
+        child: const _TrickWinReveal(),
+      );
+    }
+    
     if (t == null) return const SizedBox.shrink();
   final plays = {for (final p in t.plays) p['pos']!: p['card']!};
     final turnPos = store.currentTurnPos;
@@ -638,6 +647,258 @@ class _BidRowState extends State<_BidRow> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TrickWinReveal extends StatefulWidget {
+  const _TrickWinReveal();
+
+  @override
+  State<_TrickWinReveal> createState() => _TrickWinRevealState();
+}
+
+class _TrickWinRevealState extends State<_TrickWinReveal>
+    with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late AnimationController _bannerController;
+  late Animation<double> _pulseAnimation;
+  late Animation<double> _bannerAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Pulse animation for winning card
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.2,
+    ).animate(CurvedAnimation(
+      parent: _pulseController,
+      curve: Curves.easeInOut,
+    ));
+
+    // Banner slide-in animation
+    _bannerController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    _bannerAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _bannerController,
+      curve: Curves.easeOutBack,
+    ));
+
+    // Start animations
+    _bannerController.forward();
+    _pulseController.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _bannerController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final store = context.watch<TableStore>();
+    final trickSnapshot = store.trickWinRevealSnapshot;
+    
+    if (trickSnapshot == null) {
+      return const SizedBox.shrink();
+    }
+
+    final plays = {for (final p in trickSnapshot.plays) p['pos']!: p['card']!};
+    final winner = trickSnapshot.winner;
+    final trickNumber = trickSnapshot.index + 1;
+
+    Widget seatWithWinAnimation(String pos) {
+      final card = plays[pos];
+      final isWinner = pos == winner;
+      
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            pos,
+            style: TextStyle(
+              fontWeight: isWinner ? FontWeight.bold : FontWeight.normal,
+              color: isWinner ? Colors.amber.shade700 : null,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (card != null)
+            AnimatedBuilder(
+              animation: _pulseAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: isWinner ? _pulseAnimation.value : 1.0,
+                  child: Container(
+                    decoration: isWinner
+                        ? BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.amber.withOpacity(0.6),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          )
+                        : null,
+                    child: PlayingCardView(
+                      code: card,
+                      width: 56,
+                      highlight: isWinner,
+                    ),
+                  ),
+                );
+              },
+            )
+          else
+            Container(
+              width: 56,
+              height: 56 * 1.4,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.black12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text('—'),
+            ),
+        ],
+      );
+    }
+
+    return Stack(
+      children: [
+        // Card layout with win animation
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            children: [
+              Center(child: seatWithWinAnimation('N')),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  seatWithWinAnimation('W'),
+                  seatWithWinAnimation('E'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Center(child: seatWithWinAnimation('S')),
+            ],
+          ),
+        ),
+        // Win banner
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: AnimatedBuilder(
+            animation: _bannerAnimation,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(0, -30 * (1 - _bannerAnimation.value)),
+                child: Opacity(
+                  opacity: _bannerAnimation.value,
+                  child: Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade100,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.amber.shade300),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.emoji_events,
+                          color: Colors.amber.shade700,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Trick $trickNumber won by $winner',
+                          style: TextStyle(
+                            color: Colors.amber.shade700,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        // Next leader indicator
+        if (trickNumber < 6) // Show only if not the last trick
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: AnimatedBuilder(
+              animation: _bannerAnimation,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(0, 30 * (1 - _bannerAnimation.value)),
+                  child: Opacity(
+                    opacity: _bannerAnimation.value * 0.8,
+                    child: Container(
+                      margin: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.arrow_forward,
+                            color: Colors.blue.shade600,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Next leader: $winner',
+                            style: TextStyle(
+                              color: Colors.blue.shade700,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }

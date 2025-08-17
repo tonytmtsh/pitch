@@ -40,6 +40,9 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
+      - name: Analyze code
+        run: flutter analyze
+
       - name: Run tests
         run: flutter test --reporter compact
 
@@ -72,3 +75,34 @@ jobs:
           force_orphan: true
           user_name: github-actions[bot]
           user_email: github-actions[bot]@users.noreply.github.com
+
+      - name: Wait for GitHub Pages deployment
+        run: sleep 30
+
+      - name: Smoke test GitHub Pages (${{ matrix.name }})
+        run: |
+          set -e
+          PAGES_URL="https://tonytmtsh.github.io${{ matrix.base_href }}"
+          echo "Testing Pages URL: $PAGES_URL"
+          
+          # Retry logic with exponential backoff
+          max_attempts=5
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt of $max_attempts..."
+            
+            if curl -f -s -L "$PAGES_URL" | grep -q '<title>'; then
+              echo "✅ Smoke test passed for ${{ matrix.name }} - Pages site is accessible"
+              exit 0
+            fi
+            
+            if [ $attempt -eq $max_attempts ]; then
+              echo "❌ Smoke test failed for ${{ matrix.name }} - Pages site not accessible after $max_attempts attempts"
+              exit 1
+            fi
+            
+            sleep_time=$((attempt * 15))
+            echo "Retrying in ${sleep_time} seconds..."
+            sleep $sleep_time
+            attempt=$((attempt + 1))
+          done

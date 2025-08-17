@@ -2,12 +2,14 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../services/pitch_service.dart';
+import '../services/sound_service.dart';
 
 class TableStore extends ChangeNotifier {
-  TableStore(this._service, this.tableId);
+  TableStore(this._service, this.tableId, {this.onTrickWin});
 
   final PitchService _service;
   final String tableId;
+  final VoidCallback? onTrickWin;
   StreamSubscription<void>? _sub;
 
   TableDetails? _table;
@@ -358,6 +360,9 @@ class TableStore extends ChangeNotifier {
     _trickWinRevealId = trickId;
     _trickWinRevealStartTime = DateTime.now();
     
+    // Call trick win callback for sound
+    onTrickWin?.call();
+    
     // Auto-hide the win reveal after 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
       if (_trickWinRevealId == trickId) {
@@ -372,5 +377,14 @@ class TableStore extends ChangeNotifier {
     _trickWinRevealId = null;
     _trickWinRevealStartTime = null;
     notifyListeners();
+  }
+
+  // Helper method to get player name by position
+  String? getPlayerNameByPosition(String position) {
+    if (_table == null) return null;
+    final posOrder = ['N', 'E', 'S', 'W'];
+    final posIndex = posOrder.indexOf(position);
+    if (posIndex < 0 || posIndex >= _table!.seats.length) return null;
+    return _table!.seats[posIndex].player;
   }
 }

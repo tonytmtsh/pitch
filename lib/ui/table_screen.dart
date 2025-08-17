@@ -2,9 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'widgets/playing_card.dart';
 import 'widgets/help_dialog.dart';
+import 'widgets/settings_sheet.dart';
+import 'widgets/user_avatar.dart';
+import 'widgets/responsive_layout.dart';
+import 'widgets/keyboard_hand_widget.dart';
 
 import '../services/pitch_service.dart';
+import '../services/sound_service.dart';
 import '../state/table_store.dart';
+import '../state/settings_store.dart';
 
 class TableScreen extends StatelessWidget {
   const TableScreen({super.key, required this.tableId, required this.name});
@@ -15,7 +21,18 @@ class TableScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (ctx) => TableStore(ctx.read<PitchService>(), tableId)..refresh(),
+      create: (ctx) {
+        final settings = ctx.read<SettingsStore>();
+        return TableStore(
+          ctx.read<PitchService>(), 
+          tableId,
+          onTrickWin: () {
+            if (settings.soundsEnabled) {
+              SoundService().playTrickWinSound();
+            }
+          },
+        )..refresh();
+      },
       child: _TableBody(name: name),
     );
   }
@@ -53,6 +70,17 @@ class _TableBodyState extends State<_TableBody> {
       appBar: AppBar(
         title: Text(widget.name),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (context) => const SettingsSheet(),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.help_outline),
             tooltip: 'Rules & Help',
@@ -97,7 +125,10 @@ class _TableBodyState extends State<_TableBody> {
               final isMe = myId != null && seat.userId == myId;
               return Column(children: [
                 ListTile(
-                  leading: CircleAvatar(child: Text(label)),
+                  leading: UserAvatar(
+                    playerName: seat.player,
+                    isYou: isMe,
+                  ),
                   title: Text(
                     seat.player != null
                         ? isMe
@@ -121,8 +152,14 @@ class _TableBodyState extends State<_TableBody> {
                 final b = a['bid'];
                 final pass = a['pass'] == true;
                 final text = pass ? 'Pass' : 'Bid $b';
+                final playerName = store.getPlayerNameByPosition(p);
+                final isMyPosition = store.mySeatPos == p;
                 return ListTile(
-                  leading: CircleAvatar(child: Text(p)),
+                  leading: UserAvatar(
+                    playerName: playerName,
+                    isYou: isMyPosition,
+                    size: 30,
+                  ),
                   title: Text(text),
                 );
               }),

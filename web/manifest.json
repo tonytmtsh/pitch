@@ -1,13 +1,14 @@
 {
-    "name": "pitch",
-    "short_name": "pitch",
+    "name": "Pitch Card Game",
+    "short_name": "Pitch",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#006064",
+    "theme_color": "#006064",
+    "description": "4-player online Pitch card game with 4-Point and 10-Point variants",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "categories": ["games", "entertainment"],
     "icons": [
         {
             "src": "icons/Icon-192.png",

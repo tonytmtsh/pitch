@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'card_slide_animation.dart';
+import '../../services/sound_service.dart';
+import '../../state/settings_store.dart';
 
 /// Simple playing card renderer using a short code like 'AS', '10H', 'QC'.
 class PlayingCardView extends StatelessWidget {
@@ -107,9 +110,16 @@ class _CardButtonState extends State<CardButton> {
           customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           onTap: widget.enabled && widget.onTap != null
               ? () async {
+                  final settings = context.read<SettingsStore>();
+                  
                   setState(() => _scale = 0.96);
                   await Future.delayed(const Duration(milliseconds: 60));
                   setState(() => _scale = 1.0);
+                  
+                  // Play sound if enabled
+                  if (settings.soundsEnabled) {
+                    SoundService().playCardSound();
+                  }
                   
                   // Play slide animation if we have the required parameters
                   if (widget.cardCode != null && widget.targetKey != null) {
@@ -126,7 +136,13 @@ class _CardButtonState extends State<CardButton> {
                     widget.onTap!.call();
                   }
                 }
-              : null,
+              : () async {
+                  // Play invalid sound for disabled interactions
+                  final settings = context.read<SettingsStore>();
+                  if (settings.soundsEnabled) {
+                    SoundService().playInvalidSound();
+                  }
+                },
           child: widget.child,
         ),
       ),

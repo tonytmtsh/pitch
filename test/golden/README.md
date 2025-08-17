@@ -21,16 +21,33 @@ We have golden tests for:
 
 ## Running Golden Tests
 
-### Prerequisites
+### Using the Test Runner Script (Recommended)
 
+The project includes a helper script for running golden tests:
+
+```bash
+# Run all golden tests
+./run_golden_tests.sh
+
+# Update golden files (when UI changes are expected)
+./run_golden_tests.sh --update
+
+# See help
+./run_golden_tests.sh --help
+```
+
+### Manual Commands
+
+If you prefer running tests manually:
+
+#### Prerequisites
 Make sure Flutter is installed and web support is enabled:
 ```bash
 flutter config --enable-web
 flutter pub get
 ```
 
-### Running Tests
-
+#### Running Tests
 To run all golden tests:
 ```bash
 flutter test test/golden/

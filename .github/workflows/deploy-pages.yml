@@ -40,11 +40,27 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
-      - name: Build web (${{ matrix.name }})
+      - name: Run tests
+        run: flutter test --reporter compact
+
+      - name: Build web (mock)
+        if: ${{ matrix.name == 'mock' }}
         run: >-
           flutter build web --release
           --base-href "${{ matrix.base_href }}"
           --dart-define=BACKEND=${{ matrix.backend }}
+
+      - name: Build web (server)
+        if: ${{ matrix.name == 'server' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          flutter build web --release \
+            --base-href "${{ matrix.base_href }}" \
+            --dart-define=BACKEND=${{ matrix.backend }} \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
 
       - name: Deploy to GitHub Pages (${{ matrix.name }})
         uses: peaceiris/actions-gh-pages@v3

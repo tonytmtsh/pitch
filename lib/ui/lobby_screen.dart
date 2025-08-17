@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../services/mock_pitch_service.dart';
 import '../services/pitch_service.dart';
-import '../services/supabase/supabase_pitch_service.dart';
 import '../state/lobby_store.dart';
+import 'table_screen.dart';
 
 class LobbyScreen extends StatelessWidget {
   const LobbyScreen({super.key});
@@ -12,21 +11,9 @@ class LobbyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const backend = String.fromEnvironment('BACKEND', defaultValue: 'mock');
-    const supabaseUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: '');
-    const supabaseAnon = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
-
-    return Provider<PitchService>(
-      create: (_) {
-        if (backend == 'server') {
-          // NOTE: Supabase client not wired yet; this stub prepares the URL/key.
-          return SupabasePitchService(url: supabaseUrl, anonKey: supabaseAnon);
-        }
-        return MockPitchService();
-      },
-      child: ChangeNotifierProvider(
-        create: (ctx) => LobbyStore(ctx.read<PitchService>())..refresh(),
-    child: const _LobbyBody(backendLabel: backend),
-      ),
+    return ChangeNotifierProvider(
+      create: (ctx) => LobbyStore(ctx.read<PitchService>())..refresh(),
+      child: const _LobbyBody(backendLabel: backend),
     );
   }
 }
@@ -65,9 +52,9 @@ class _LobbyBody extends StatelessWidget {
                   ,
               trailing: const Icon(Icons.chevron_right),
               onTap: () async {
-                // You can navigate to a table screen later; for now, snackbar.
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(content: Text('Open table ${t.name}')));
+                Navigator.of(ctx).push(MaterialPageRoute(
+                  builder: (_) => TableScreen(tableId: t.id, name: t.name),
+                ));
               },
             );
           },

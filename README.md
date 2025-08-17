@@ -3,11 +3,6 @@
 Flutter Web app for a 4‑player Pitch card game. The app runs against an in‑app mock backend today and includes a complete Supabase SQL backend for future wiring.
 
 ## What’s here
-- UI with Provider state (`lib/ui`, `lib/state`)
-- Service contract and mock impl (`lib/services/`)
-- Mock JSON snapshots (`mock/`) for lobby/table/hands/bidding/replacements/tricks/scoring
-- Supabase SQL schema and RPCs (`supabase/sql/`)
-- CI that builds two web targets (mock/server) and deploys each to GitHub Pages
 
 ## Run locally
 ```bash
@@ -16,7 +11,8 @@ flutter pub get
 flutter run -d chrome
 ```
 
-Build web for GitHub Pages with correct base paths:
+ Dev run: `flutter run -d chrome` (defaults to mock unless overridden)
+ Note: Ensure the app never initializes Supabase or shows sign-in in mock mode; use `--dart-define=BACKEND=mock` to enforce this.
 ```bash
 # Mock build
 flutter build web --release --base-href "/pitch_mock/" --dart-define=BACKEND=mock

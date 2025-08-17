@@ -1,16 +1,36 @@
-# pitch
+# Pitch (Flutter Web)
 
-A new Flutter project.
+Flutter Web app for a 4‑player Pitch card game. The app runs against an in‑app mock backend today and includes a complete Supabase SQL backend for future wiring.
 
-## Getting Started
+## What’s here
+- UI with Provider state (`lib/ui`, `lib/state`)
+- Service contract and mock impl (`lib/services/`)
+- Mock JSON snapshots (`mock/`) for lobby/table/hands/bidding/replacements/tricks/scoring
+- Supabase SQL schema and RPCs (`supabase/sql/`)
+- CI that builds two web targets (mock/server) and deploys each to GitHub Pages
 
-This project is a starting point for a Flutter application.
+## Run locally
+```bash
+flutter config --enable-web
+flutter pub get
+flutter run -d chrome
+```
 
-A few resources to get you started if this is your first Flutter project:
+Build web for GitHub Pages with correct base paths:
+```bash
+# Mock build
+flutter build web --release --base-href "/pitch_mock/" --dart-define=BACKEND=mock
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+# Server build
+flutter build web --release --base-href "/pitch_server/" --dart-define=BACKEND=server \
+	--dart-define=SUPABASE_URL="https://YOUR-PROJECT.supabase.co" \
+	--dart-define=SUPABASE_ANON_KEY="YOUR-ANON-KEY"
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Supabase (future wiring)
+When running with `BACKEND=server`, the app constructs a `SupabasePitchService` using `SUPABASE_URL` and `SUPABASE_ANON_KEY` provided via `--dart-define`. The current stub doesn’t call the API yet; it’s a placeholder for wiring RPCs defined in `supabase/sql/003_functions.sql`.
+
+## Contributing
+We welcome PRs. Please branch from `main` and open a Pull Request when ready.
+
+See CONTRIBUTING.md for details on local dev, builds, tests, and CI.

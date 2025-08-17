@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../services/mock_pitch_service.dart';
 import '../services/pitch_service.dart';
+import '../services/supabase/supabase_pitch_service.dart';
 import '../state/lobby_store.dart';
 
 class LobbyScreen extends StatelessWidget {
@@ -10,25 +11,37 @@ class LobbyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const backend = String.fromEnvironment('BACKEND', defaultValue: 'mock');
+    const supabaseUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: '');
+    const supabaseAnon = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
+
     return Provider<PitchService>(
-      create: (_) => MockPitchService(),
+      create: (_) {
+        if (backend == 'server') {
+          // NOTE: Supabase client not wired yet; this stub prepares the URL/key.
+          return SupabasePitchService(url: supabaseUrl, anonKey: supabaseAnon);
+        }
+        return MockPitchService();
+      },
       child: ChangeNotifierProvider(
         create: (ctx) => LobbyStore(ctx.read<PitchService>())..refresh(),
-        child: const _LobbyBody(),
+    child: const _LobbyBody(backendLabel: backend),
       ),
     );
   }
 }
 
 class _LobbyBody extends StatelessWidget {
-  const _LobbyBody();
+  const _LobbyBody({required this.backendLabel});
+
+  final String backendLabel;
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<LobbyStore>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pitch — Lobby (Mock)')),
+      appBar: AppBar(title: Text('Pitch — Lobby (${backendLabel[0].toUpperCase()}${backendLabel.substring(1)})')),
       body: () {
         if (store.loading) {
           return const Center(child: CircularProgressIndicator());

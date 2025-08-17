@@ -53,6 +53,72 @@ class TableStore extends ChangeNotifier {
   HandState? get handState => _handState;
   List<String> _myCards = const [];
   List<String> get myCards => _myCards;
+  // Sorted/grouped view of my hand for UI rendering
+  List<String> get myCardsSorted {
+    if (_myCards.isEmpty) return _myCards;
+    final trump = _handState?.trumpSuit; // 'S'|'H'|'D'|'C' or null
+    final cards = List<String>.from(_myCards);
+    int rankScore(String rank) {
+      switch (rank) {
+        case 'A':
+          return 14;
+        case 'K':
+          return 13;
+        case 'Q':
+          return 12;
+        case 'J':
+          return 11;
+        case '10':
+          return 10;
+        case '9':
+          return 9;
+        case '8':
+          return 8;
+        case '7':
+          return 7;
+        case '6':
+          return 6;
+        case '5':
+          return 5;
+        case '4':
+          return 4;
+        case '3':
+          return 3;
+        case '2':
+          return 2;
+        default:
+          // Unknown: put low
+          return 0;
+      }
+    }
+    int suitIndex(String suit) {
+      const baseOrder = ['S', 'H', 'D', 'C'];
+      if (trump == null || trump.isEmpty) {
+        return baseOrder.indexOf(suit);
+      }
+      if (suit == trump) return 0; // trump first
+      // Remaining suits keep base order after trump
+      final filtered = baseOrder.where((s) => s != trump).toList();
+      final idx = filtered.indexOf(suit);
+      return idx < 0 ? filtered.length + 1 : (idx + 1);
+    }
+    (String rank, String suit) parse(String code) {
+      if (code.isEmpty) return ('', '');
+      final suit = code.substring(code.length - 1);
+      final rank = code.substring(0, code.length - 1);
+      return (rank, suit);
+    }
+    cards.sort((a, b) {
+      final (ra, sa) = parse(a);
+      final (rb, sb) = parse(b);
+      final si = suitIndex(sa).compareTo(suitIndex(sb));
+      if (si != 0) return si;
+      // Within suit, highest to lowest rank
+      final rdiff = rankScore(rb).compareTo(rankScore(ra));
+      return rdiff;
+    });
+    return cards;
+  }
   String _variant = '10_point';
   
   // Win reveal getters

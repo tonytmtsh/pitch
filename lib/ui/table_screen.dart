@@ -4,8 +4,9 @@ import 'widgets/playing_card.dart';
 import 'widgets/help_dialog.dart';
 import 'widgets/settings_sheet.dart';
 import 'widgets/user_avatar.dart';
-import 'widgets/responsive_layout.dart';
-import 'widgets/keyboard_hand_widget.dart';
+// import 'widgets/responsive_layout.dart';
+// import 'widgets/keyboard_hand_widget.dart';
+import 'widgets/fan_hand.dart';
 
 import '../services/pitch_service.dart';
 import '../services/sound_service.dart';
@@ -245,28 +246,32 @@ class _TableBodyState extends State<_TableBody> {
                 final active = tricks.isNotEmpty ? tricks.last : null;
                 final isMyTurn = store.currentTurnPos == store.mySeatPos;
                 final targetKey = _getTargetKeyForSeat(store.mySeatPos);
+                final cards = store.myCardsSorted; // sorted/grouped view of hand
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: store.myCards.map((c) {
+                  child: FanHand.builder(
+                    itemCount: cards.length,
+                    cardWidth: 64,
+                    maxAngleDeg: 12,
+                    overlapFraction: 0.5, // closer together
+                    arcHeight: 24,
+                    itemBuilder: (i, effectiveWidth) {
+                      final c = cards[i];
                       final isLegal = legal.contains(c);
+                      final enabled = isMyTurn && isLegal && (active?.id != null);
                       return CardButton(
-                        enabled: isMyTurn && isLegal && (active?.id != null),
+                        enabled: enabled,
                         cardCode: c,
                         targetKey: targetKey,
-                        onTap: (isMyTurn && isLegal && active?.id != null)
-                            ? () => ctx.read<PitchService>().playCard(active!.id!, c)
-                            : null,
+                        onTap: enabled ? () => ctx.read<PitchService>().playCard(active!.id!, c) : null,
                         child: PlayingCardView(
                           code: c,
-                          width: 64,
+                          width: effectiveWidth,
                           highlight: isMyTurn && isLegal,
                           disabled: !isLegal,
                         ),
                       );
-                    }).toList(),
+                    },
                   ),
                 );
               }),

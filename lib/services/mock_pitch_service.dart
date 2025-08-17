@@ -35,7 +35,10 @@ class MockPitchService implements PitchService {
       final key = order[i];
       final entry = seatsMap[key] as Map<String, dynamic>?
           ?? const <String, dynamic>{};
-      seats.add(Seat(position: i, player: entry['user'] as String?));
+      final user = entry['user'] as String?;
+      // In mock data, "user" doubles as a unique id (e.g., "Bob#1002").
+      // Populate both player display and userId so the app can recognize "you".
+      seats.add(Seat(position: i, player: user, userId: user));
     }
 
     return TableDetails(

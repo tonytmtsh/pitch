@@ -11,7 +11,8 @@ Play Pitch in the browser with a clean Flutter UI, fast local mock data for inst
 - 10‑point and 4‑point variants (toggle at runtime)
 - “Current Trick” panel with N/E/S/W layout and turn highlighting
 - Legal card gating on the client; server‑side legality ready in SQL
-- My Hand panel with clickable cards (mock mode) and tap‑to‑play wiring
+- My Hand panel now uses a fan/arc layout with overlap and slight rotation
+	for a realistic feel; clickable cards (mock mode) and tap‑to‑play wiring
 - Clean state via Provider; services are backend‑agnostic
 - Mock JSON snapshots for every phase to develop fully offline
 - Full Supabase SQL schema, RLS, and RPCs for a secure server mode

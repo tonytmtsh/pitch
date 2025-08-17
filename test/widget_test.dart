@@ -17,6 +17,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Demo 10-point'), findsOneWidget);
-    expect(find.textContaining('Seats'), findsWidgets);
+    expect(find.text('10-Point'), findsOneWidget); // Chip text
+    expect(find.text('4/4'), findsOneWidget); // Occupancy chip
   });
 }

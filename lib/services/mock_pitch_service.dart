@@ -162,5 +162,12 @@ class MockPitchService implements PitchService {
   Stream<void> handEvents(String handId) async* {}
 
   @override
+  Future<bool> joinTable(String tableId, String position) async {
+    // Mock: simulate joining a table by returning true
+    // In a real implementation, this would call the Supabase join_table function
+    return true;
+  }
+
+  @override
   Future<void> signOut() async {}
 }

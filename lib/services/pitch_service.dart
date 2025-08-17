@@ -19,6 +19,8 @@ abstract class PitchService {
   Future<bool> declareTrump(String handId, String suit);
   Future<bool> playCard(String trickId, String card);
   Future<void> signOut();
+  // Table management
+  Future<bool> joinTable(String tableId, String position);
   // Realtime (server emits, mock is empty)
   Stream<void> handEvents(String handId);
 }

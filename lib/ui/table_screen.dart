@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'widgets/playing_card.dart';
 
@@ -52,12 +53,14 @@ class _TableBody extends StatelessWidget {
         if (table == null) {
           return const SizedBox.shrink();
         }
-  final pos = ['N', 'E', 'S', 'W'];
-  final myId = context.read<PitchService>().currentUserId();
-  return RefreshIndicator(
+        final pos = ['N', 'E', 'S', 'W'];
+        final myId = context.read<PitchService>().currentUserId();
+        return RefreshIndicator(
           onRefresh: () => context.read<TableStore>().refresh(),
-          child: ListView(
-          children: [
+          child: FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: ListView(
+              children: [
             const ListTile(title: Text('Seats')),
             const Divider(height: 1),
             ...table.seats.map((seat) {
@@ -170,27 +173,17 @@ class _TableBody extends StatelessWidget {
                 final tricks = store.tricksAll;
                 final active = tricks.isNotEmpty ? tricks.last : null;
                 final isMyTurn = store.currentTurnPos == store.mySeatPos;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: store.myCards.map((c) {
-                      final isLegal = legal.contains(c);
-                      return CardButton(
-                        enabled: isMyTurn && isLegal && (active?.id != null),
-                        onTap: (isMyTurn && isLegal && active?.id != null)
-                            ? () => ctx.read<PitchService>().playCard(active!.id!, c)
-                            : null,
-                        child: PlayingCardView(
-                          code: c,
-                          width: 64,
-                          highlight: isMyTurn && isLegal,
-                          disabled: !isLegal,
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                
+                return _KeyboardNavigableHand(
+                  cards: store.myCards,
+                  legalCards: legal,
+                  isMyTurn: isMyTurn,
+                  canPlay: active?.id != null,
+                  onCardPlayed: (card) {
+                    if (active?.id != null) {
+                      ctx.read<PitchService>().playCard(active!.id!, card);
+                    }
+                  },
                 );
               }),
             ],
@@ -341,7 +334,9 @@ class _TableBody extends StatelessWidget {
             ],
             const SizedBox(height: 16),
           ],
-        ));
+        ),
+      ),
+    );
       }(),
     );
   }
@@ -544,7 +539,7 @@ class _CurrentTrickPanel extends StatelessWidget {
     final store = context.watch<TableStore>();
     final t = store.currentTrick;
     if (t == null) return const SizedBox.shrink();
-  final plays = {for (final p in t.plays) p['pos']!: p['card']!};
+    final plays = {for (final p in t.plays) p['pos']!: p['card']!};
     final turnPos = store.currentTurnPos;
 
     Widget seat(String pos) {
@@ -553,44 +548,63 @@ class _CurrentTrickPanel extends StatelessWidget {
         fontWeight: turnPos == pos ? FontWeight.bold : FontWeight.normal,
         color: turnPos == pos ? Colors.teal : null,
       );
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(pos, style: style),
-          const SizedBox(height: 4),
-          if (card != null)
-            PlayingCardView(code: card, width: 56)
-          else
-            Container(
-              width: 56,
-              height: 56 * 1.4,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.black12),
-                borderRadius: BorderRadius.circular(6),
+      
+      String seatLabel = 'Position $pos';
+      if (card != null) {
+        seatLabel += ' played card';
+      } else if (turnPos == pos) {
+        seatLabel += ' to play';
+      } else {
+        seatLabel += ' waiting';
+      }
+      
+      return Semantics(
+        label: seatLabel,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(pos, style: style),
+            const SizedBox(height: 4),
+            if (card != null)
+              PlayingCardView(code: card, width: 56)
+            else
+              Container(
+                width: 56,
+                height: 56 * 1.4,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text('—'),
               ),
-              child: const Text('—'),
-            ),
-        ],
+          ],
+        ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        children: [
-          Center(child: seat('N')),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              seat('W'),
-              seat('E'),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Center(child: seat('S')),
-        ],
+    final playedCards = plays.values.where((card) => card.isNotEmpty).length;
+    final trickLabel = 'Current trick, $playedCards of 4 cards played. ${turnPos != null ? "It's $turnPos's turn." : ""}';
+
+    return Semantics(
+      label: trickLabel,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          children: [
+            Center(child: seat('N')),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                seat('W'),
+                seat('E'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Center(child: seat('S')),
+          ],
+        ),
       ),
     );
   }
@@ -626,6 +640,143 @@ class _BidRowState extends State<_BidRow> {
             child: const Text('Bid'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A keyboard-navigable widget for displaying and selecting cards
+class _KeyboardNavigableHand extends StatefulWidget {
+  const _KeyboardNavigableHand({
+    required this.cards,
+    required this.legalCards,
+    required this.isMyTurn,
+    required this.canPlay,
+    required this.onCardPlayed,
+  });
+
+  final List<String> cards;
+  final Set<String> legalCards;
+  final bool isMyTurn;
+  final bool canPlay;
+  final Function(String) onCardPlayed;
+
+  @override
+  State<_KeyboardNavigableHand> createState() => _KeyboardNavigableHandState();
+}
+
+class _KeyboardNavigableHandState extends State<_KeyboardNavigableHand> {
+  int _selectedIndex = 0;
+  late List<FocusNode> _focusNodes;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNodes = List.generate(widget.cards.length, (_) => FocusNode());
+  }
+
+  @override
+  void didUpdateWidget(_KeyboardNavigableHand oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Handle changes in card count
+    if (widget.cards.length != oldWidget.cards.length) {
+      // Dispose old focus nodes
+      for (final node in _focusNodes) {
+        node.dispose();
+      }
+      // Create new focus nodes
+      _focusNodes = List.generate(widget.cards.length, (_) => FocusNode());
+      
+      // Clamp selected index to valid range
+      if (_selectedIndex >= widget.cards.length) {
+        _selectedIndex = widget.cards.length - 1;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final node in _focusNodes) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
+  void _moveSelection(int direction) {
+    setState(() {
+      _selectedIndex = (_selectedIndex + direction).clamp(0, widget.cards.length - 1);
+    });
+    
+    // Focus the newly selected card
+    if (_selectedIndex < _focusNodes.length) {
+      _focusNodes[_selectedIndex].requestFocus();
+    }
+  }
+
+  void _playSelectedCard() {
+    if (_selectedIndex < widget.cards.length) {
+      final card = widget.cards[_selectedIndex];
+      final isLegal = widget.legalCards.contains(card);
+      
+      if (widget.isMyTurn && isLegal && widget.canPlay) {
+        widget.onCardPlayed(card);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          switch (event.logicalKey) {
+            case LogicalKeyboardKey.arrowLeft:
+              _moveSelection(-1);
+              return KeyEventResult.handled;
+            case LogicalKeyboardKey.arrowRight:
+              _moveSelection(1);
+              return KeyEventResult.handled;
+            case LogicalKeyboardKey.enter:
+              _playSelectedCard();
+              return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Semantics(
+        label: 'Your hand of ${widget.cards.length} cards. Use arrow keys to navigate and Enter to play.',
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: widget.cards.asMap().entries.map((entry) {
+              final index = entry.key;
+              final card = entry.value;
+              final isLegal = widget.legalCards.contains(card);
+              final isSelected = index == _selectedIndex;
+              
+              return CardButton(
+                focusNode: _focusNodes[index],
+                autofocus: index == 0 && widget.isMyTurn,
+                enabled: widget.isMyTurn && isLegal && widget.canPlay,
+                onTap: (widget.isMyTurn && isLegal && widget.canPlay)
+                    ? () {
+                        setState(() => _selectedIndex = index);
+                        widget.onCardPlayed(card);
+                      }
+                    : null,
+                child: PlayingCardView(
+                  code: card,
+                  width: 64,
+                  highlight: (widget.isMyTurn && isLegal) || isSelected,
+                  disabled: !isLegal,
+                ),
+              );
+            }).toList(),
+          ),
+        ),
       ),
     );
   }

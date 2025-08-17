@@ -1,7 +1,7 @@
 ````markdown
 # Pitch — a modern, web‑based 4‑player Pitch card game
 
-[![CI • Build & Deploy](https://github.com/tonytmtsh/pitch/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/tonytmtsh/pitch/actions/workflows/deploy-pages.yml)
+[![Analyze & Test](https://github.com/tonytmtsh/pitch/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/tonytmtsh/pitch/actions/workflows/deploy-pages.yml)
 
 Play Pitch in the browser with a clean Flutter UI, fast local mock data for instant iteration, and a production‑grade Supabase SQL backend ready to wire in. The goal: a crisp, turn‑gated, realtime experience that feels like shuffling a real deck.
 

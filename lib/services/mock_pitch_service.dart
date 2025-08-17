@@ -7,9 +7,9 @@ import 'dtos.dart';
 
 class MockPitchService implements PitchService {
   @override
-  String? currentUserId() => null;
+  String? currentUserId() => 'Bob#1002'; // Mock user for "You" badge testing
   @override
-  bool supportsIdentity() => false;
+  bool supportsIdentity() => false; // Keep false for mock-only features
   @override
   Future<List<LobbyTable>> fetchLobby() async {
     final raw = await rootBundle.loadString('mock/lobby.json');
@@ -46,6 +46,13 @@ class MockPitchService implements PitchService {
   variant: tbl['variant'] as String?,
   handId: 'demo-hand',
     );
+  }
+
+  @override
+  Future<bool> joinTable(String tableId) async {
+    // Mock: simulate successful join
+    await Future.delayed(const Duration(milliseconds: 500));
+    return true;
   }
 
   @override

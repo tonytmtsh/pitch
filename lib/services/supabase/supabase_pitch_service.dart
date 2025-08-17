@@ -92,6 +92,20 @@ class SupabasePitchService implements PitchService {
     );
   }
 
+  @override
+  Future<bool> joinTable(String tableId) async {
+    try {
+      // Call the join_table RPC function  
+      final result = await _client.rpc('join_table', params: {
+        'table_uuid': tableId,
+        'position': null, // Let server choose available position
+      });
+      return (result as bool?) ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   int _posToIndex(String? pos) {
     switch (pos) {
       case 'N':

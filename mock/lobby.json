@@ -1,10 +1,18 @@
 {
   "tables": [
     {"id":"11111111-1111-1111-1111-111111111111","name":"Demo 10-point","variant":"10_point","status":"open","occupancy":4,"owner":"Alice#1001","target_score":50},
-    {"id":"22222222-2222-2222-2222-222222222222","name":"Casual 4-point","variant":"4_point","status":"open","occupancy":2,"owner":"Bob#1002","target_score":11}
+    {"id":"22222222-2222-2222-2222-222222222222","name":"Casual 4-point","variant":"4_point","status":"open","occupancy":2,"owner":"Bob#1002","target_score":11},
+    {"id":"33333333-3333-3333-3333-333333333333","name":"Quick Match","variant":"10_point","status":"open","occupancy":1,"owner":"Carol#1003","target_score":50},
+    {"id":"44444444-4444-4444-4444-444444444444","name":"Tournament Style","variant":"4_point","status":"playing","occupancy":4,"owner":"Dave#1004","target_score":11},
+    {"id":"55555555-5555-5555-5555-555555555555","name":"Beginner Friendly","variant":"10_point","status":"open","occupancy":3,"owner":"Eve#1005","target_score":50},
+    {"id":"66666666-6666-6666-6666-666666666666","name":"Mixed Practice","variant":"4_point","status":"open","occupancy":2,"owner":"Frank#1006","target_score":11}
   ],
   "presence": {
     "11111111-1111-1111-1111-111111111111": ["Alice#1001","Bob#1002","Carol#1003","Dave#1004"],
-    "22222222-2222-2222-2222-222222222222": ["Bob#1002","Eve#1005"]
+    "22222222-2222-2222-2222-222222222222": ["Bob#1002","Eve#1005"],
+    "33333333-3333-3333-3333-333333333333": ["Carol#1003"],
+    "44444444-4444-4444-4444-444444444444": ["Dave#1004","Frank#1006","Grace#1007","Henry#1008"],
+    "55555555-5555-5555-5555-555555555555": ["Eve#1005","Alice#1001","Bob#1002"],
+    "66666666-6666-6666-6666-666666666666": ["Frank#1006","Grace#1007"]
   }
 }

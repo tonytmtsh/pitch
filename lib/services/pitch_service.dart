@@ -2,6 +2,8 @@
 abstract class PitchService {
   Future<List<LobbyTable>> fetchLobby();
   Future<TableDetails> fetchTable(String tableId);
+  // Table joining (mock only, server would use Supabase RPC)
+  Future<bool> joinTable(String tableId);
   // Hand flows (mock/server parity later)
   Future<BiddingProgress> fetchBidding(String handId);
   Future<List<ReplacementEvent>> fetchReplacements(String handId);

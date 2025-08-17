@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'widgets/playing_card.dart';
+import 'theme/pitch_theme.dart';
 
 import '../services/pitch_service.dart';
 import '../state/table_store.dart';
@@ -54,9 +55,11 @@ class _TableBody extends StatelessWidget {
         }
   final pos = ['N', 'E', 'S', 'W'];
   final myId = context.read<PitchService>().currentUserId();
-  return RefreshIndicator(
-          onRefresh: () => context.read<TableStore>().refresh(),
-          child: ListView(
+  return Container(
+          decoration: PitchTheme.createFeltBackground(context),
+          child: RefreshIndicator(
+            onRefresh: () => context.read<TableStore>().refresh(),
+            child: ListView(
           children: [
             const ListTile(title: Text('Seats')),
             const Divider(height: 1),
@@ -139,11 +142,55 @@ class _TableBody extends StatelessWidget {
                     DropdownButton<String>(
                       value: null,
                       hint: const Text('Suit'),
-                      items: const [
-                        DropdownMenuItem(value: 'S', child: Text('Spades')),
-                        DropdownMenuItem(value: 'H', child: Text('Hearts')),
-                        DropdownMenuItem(value: 'D', child: Text('Diamonds')),
-                        DropdownMenuItem(value: 'C', child: Text('Clubs')),
+                      items: [
+                        DropdownMenuItem(
+                          value: 'S', 
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(PitchTheme.getSuitSymbol('S'), 
+                                style: TextStyle(color: PitchTheme.getSuitColor('S'))),
+                              const SizedBox(width: 4),
+                              const Text('Spades'),
+                            ],
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'H', 
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(PitchTheme.getSuitSymbol('H'), 
+                                style: TextStyle(color: PitchTheme.getSuitColor('H'))),
+                              const SizedBox(width: 4),
+                              const Text('Hearts'),
+                            ],
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'D', 
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(PitchTheme.getSuitSymbol('D'), 
+                                style: TextStyle(color: PitchTheme.getSuitColor('D'))),
+                              const SizedBox(width: 4),
+                              const Text('Diamonds'),
+                            ],
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'C', 
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(PitchTheme.getSuitSymbol('C'), 
+                                style: TextStyle(color: PitchTheme.getSuitColor('C'))),
+                              const SizedBox(width: 4),
+                              const Text('Clubs'),
+                            ],
+                          ),
+                        ),
                       ],
                       onChanged: store.mySeatPos == store.biddingWinnerPos
                           ? (suit) async {
@@ -267,12 +314,21 @@ class _TableBody extends StatelessWidget {
                           spacing: 6,
                           runSpacing: 6,
                           children: legal
-                              .map((c) => ElevatedButton(
-                                    onPressed: active.id != null
-                                        ? () => svc.playCard(active.id!, c)
-                                        : null,
-                                    child: Text(c),
-                                  ))
+                              .map((c) {
+                                final suit = c.isNotEmpty ? c.substring(c.length - 1) : '';
+                                return ElevatedButton(
+                                  onPressed: active.id != null
+                                      ? () => svc.playCard(active.id!, c)
+                                      : null,
+                                  style: ElevatedButton.styleFrom(
+                                    side: BorderSide(
+                                      color: PitchTheme.getSuitColor(suit),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Text(c),
+                                );
+                              })
                               .toList(),
                         ),
                     ],
@@ -301,14 +357,31 @@ class _TableBody extends StatelessWidget {
               ),
               const Divider(height: 1),
               ListTile(
-                title: Text('Trumps: ${store.scoring!.trumps}'),
+                title: Row(
+                  children: [
+                    const Text('Trumps: '),
+                    Text(
+                      PitchTheme.getSuitSymbol(store.scoring!.trumps),
+                      style: TextStyle(
+                        color: PitchTheme.getSuitColor(store.scoring!.trumps),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(store.scoring!.trumps),
+                  ],
+                ),
               ),
               ...store.scoring!.capturedBy.entries.map((e) {
                 final suitGroups = _groupBySuit(e.value);
                 final chips = suitGroups.entries
                     .map((s) => Padding(
                           padding: const EdgeInsets.only(right: 6, bottom: 6),
-                          child: Chip(label: Text('${s.key}: ${s.value.join(' ')}')),
+                          child: PitchTheme.createSuitChip(
+                            text: '${s.key}: ${s.value.join(' ')}',
+                            suit: s.key,
+                          ),
                         ))
                     .toList();
                 return Padding(
@@ -341,7 +414,9 @@ class _TableBody extends StatelessWidget {
             ],
             const SizedBox(height: 16),
           ],
-        ));
+        ),
+          ),
+        );
       }(),
     );
   }

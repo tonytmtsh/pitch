@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/pitch_theme.dart';
+
 /// Simple playing card renderer using a short code like 'AS', '10H', 'QC'.
 class PlayingCardView extends StatelessWidget {
   const PlayingCardView({
@@ -55,18 +57,7 @@ class PlayingCardView extends StatelessWidget {
   }
 
   (String, Color) _suitInfo(String suit) {
-    switch (suit) {
-      case 'H':
-        return ('♥', Colors.red.shade700);
-      case 'D':
-        return ('♦', Colors.red.shade700);
-      case 'C':
-        return ('♣', Colors.black87);
-      case 'S':
-        return ('♠', Colors.black87);
-      default:
-        return ('?', Colors.black54);
-    }
+    return (PitchTheme.getSuitSymbol(suit), PitchTheme.getSuitColor(suit));
   }
 }
 

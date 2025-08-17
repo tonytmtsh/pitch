@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'card_slide_animation.dart';
 
 /// Simple playing card renderer using a short code like 'AS', '10H', 'QC'.
 class PlayingCardView extends StatelessWidget {
@@ -71,10 +72,20 @@ class PlayingCardView extends StatelessWidget {
 }
 
 class CardButton extends StatefulWidget {
-  const CardButton({super.key, required this.child, this.onTap, this.enabled = true});
+  const CardButton({
+    super.key, 
+    required this.child, 
+    this.onTap, 
+    this.enabled = true,
+    this.cardCode,
+    this.targetKey,
+  });
+  
   final Widget child;
   final VoidCallback? onTap;
   final bool enabled;
+  final String? cardCode;
+  final GlobalKey? targetKey;
 
   @override
   State<CardButton> createState() => _CardButtonState();
@@ -82,6 +93,7 @@ class CardButton extends StatefulWidget {
 
 class _CardButtonState extends State<CardButton> {
   double _scale = 1.0;
+  final GlobalKey _cardKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +101,7 @@ class _CardButtonState extends State<CardButton> {
       scale: _scale,
       duration: const Duration(milliseconds: 80),
       child: Material(
+        key: _cardKey,
         color: Colors.transparent,
         child: InkWell(
           customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -97,7 +110,21 @@ class _CardButtonState extends State<CardButton> {
                   setState(() => _scale = 0.96);
                   await Future.delayed(const Duration(milliseconds: 60));
                   setState(() => _scale = 1.0);
-                  widget.onTap!.call();
+                  
+                  // Play slide animation if we have the required parameters
+                  if (widget.cardCode != null && widget.targetKey != null) {
+                    await CardSlideAnimation.playCard(
+                      context: context,
+                      cardCode: widget.cardCode!,
+                      sourceKey: _cardKey,
+                      targetKey: widget.targetKey!,
+                      onComplete: () {
+                        widget.onTap!.call();
+                      },
+                    );
+                  } else {
+                    widget.onTap!.call();
+                  }
                 }
               : null,
           child: widget.child,

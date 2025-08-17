@@ -12,6 +12,9 @@
 .swiftpm/
 migrate_working_dir/
 
+# Local Flutter installation
+flutter/
+
 # IntelliJ related
 *.iml
 *.ipr

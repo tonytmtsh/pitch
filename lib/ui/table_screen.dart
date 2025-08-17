@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'widgets/playing_card.dart';
+import 'widgets/card_fan.dart';
 
 import '../services/pitch_service.dart';
 import '../state/table_store.dart';
@@ -172,9 +173,7 @@ class _TableBody extends StatelessWidget {
                 final isMyTurn = store.currentTurnPos == store.mySeatPos;
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                  child: CardFan(
                     children: store.myCards.map((c) {
                       final isLegal = legal.contains(c);
                       return CardButton(

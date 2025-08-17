@@ -51,8 +51,9 @@ class _TableBody extends StatelessWidget {
         if (table == null) {
           return const SizedBox.shrink();
         }
-        final pos = ['N', 'E', 'S', 'W'];
-        return RefreshIndicator(
+  final pos = ['N', 'E', 'S', 'W'];
+  final myId = context.read<PitchService>().currentUserId();
+  return RefreshIndicator(
           onRefresh: () => context.read<TableStore>().refresh(),
           child: ListView(
           children: [
@@ -60,10 +61,17 @@ class _TableBody extends StatelessWidget {
             const Divider(height: 1),
             ...table.seats.map((seat) {
               final label = pos[seat.position];
+              final isMe = myId != null && seat.userId == myId;
               return Column(children: [
                 ListTile(
                   leading: CircleAvatar(child: Text(label)),
-                  title: Text(seat.player ?? 'Open'),
+                  title: Text(
+                    seat.player != null
+                        ? isMe
+                            ? '${seat.player} (You)'
+                            : seat.player!
+                        : 'Open',
+                  ),
                   subtitle: Text('Seat $label'),
                 ),
                 const Divider(height: 1),
@@ -85,25 +93,32 @@ class _TableBody extends StatelessWidget {
                   title: Text(text),
                 );
               }),
-              // Simple input controls (local only)
+              // Simple input controls (gated by turn)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
                   children: [
-                    const Text('Seat:'),
-                    const SizedBox(width: 8),
-                    DropdownButton<String>(
-                      value: store.selectedBidPos,
-                      items: store.biddingOrder
-                          .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                          .toList(),
-                      onChanged: (v) {
-                        if (v != null) context.read<TableStore>().setSelectedBidPos(v);
-                      },
-                    ),
+                    if (store.mySeatPos == null) ...[
+                      const Text('Seat:'),
+                      const SizedBox(width: 8),
+                      DropdownButton<String>(
+                        value: store.selectedBidPos,
+                        items: store.biddingOrder
+                            .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                            .toList(),
+                        onChanged: (v) {
+                          if (v != null) context.read<TableStore>().setSelectedBidPos(v);
+                        },
+                      ),
+                      const Spacer(),
+                    ] else ...[
+                      Text('Your seat: ${store.mySeatPos}')
+                    ],
                     const Spacer(),
                     ElevatedButton(
-                      onPressed: () => context.read<TableStore>().submitPass(store.selectedBidPos),
+                      onPressed: store.isMyBidTurn
+                          ? () => context.read<TableStore>().submitPass(store.selectedBidPos)
+                          : null,
                       child: const Text('Pass'),
                     ),
                   ],
@@ -114,25 +129,85 @@ class _TableBody extends StatelessWidget {
                 title: Text('Winner: ${store.biddingWinnerPos}'),
                 subtitle: Text('Bid ${store.biddingWinnerBid}'),
               ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  children: [
+                    const Text('Declare trump:'),
+                    const SizedBox(width: 8),
+                    DropdownButton<String>(
+                      value: null,
+                      hint: const Text('Suit'),
+                      items: const [
+                        DropdownMenuItem(value: 'S', child: Text('Spades')),
+                        DropdownMenuItem(value: 'H', child: Text('Hearts')),
+                        DropdownMenuItem(value: 'D', child: Text('Diamonds')),
+                        DropdownMenuItem(value: 'C', child: Text('Clubs')),
+                      ],
+                      onChanged: store.mySeatPos == store.biddingWinnerPos
+                          ? (suit) async {
+                              if (suit == null) return;
+                              final handId = context.read<TableStore>().table?.handId;
+                              if (handId != null) {
+                                await context.read<PitchService>().declareTrump(handId, suit);
+                              }
+                            }
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
               const Divider(height: 1),
+            ],
+            // My Hand (server mode shows your cards; mock shows placeholder)
+            if (store.myCards.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              const ListTile(title: Text('My Hand')),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: store.myCards.map((c) => Chip(label: Text(c))).toList(),
+                ),
+              ),
             ],
             // Replacements section
             if (store.replacementsAll.isNotEmpty) ...[
               const SizedBox(height: 8),
               const ListTile(title: Text('Replacements')),
               const Divider(height: 1),
+              if (!store.replacementsLocked)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Row(
+                    children: [
+                      Text('Your seat: ${store.mySeatPos ?? '-'}'),
+                      const Spacer(),
+                      ElevatedButton(
+                        onPressed: () => context.read<TableStore>().lockReplacementsNow(),
+                        child: const Text('Lock Replacements'),
+                      ),
+                    ],
+                  ),
+                ),
               ...store.replacementsAll.map((r) => ListTile(
                     leading: CircleAvatar(child: Text(r.pos)),
                     title: Text('Discarded: ${r.discarded.join(', ')}'),
                     subtitle: Text('Drawn: ${r.drawn.join(', ')}'),
                   )),
-              _ReplacementInput(),
+              if (!store.replacementsLocked) _ReplacementInput(),
               const Divider(height: 1),
             ],
             // Tricks section
             if (store.tricksAll.isNotEmpty) ...[
               const SizedBox(height: 8),
-              const ListTile(title: Text('Tricks')),
+              const ListTile(title: Text('Current Trick')),
+              const Divider(height: 1),
+              _CurrentTrickPanel(),
+              const SizedBox(height: 8),
+              const ListTile(title: Text('All Tricks')),
               const Divider(height: 1),
               ...store.tricksAll.map((t) => ExpansionTile(
                     title: Text('Trick ${t.index + 1} — Winner ${t.winner}${t.lastTrick ? ' (Last Trick)' : ''}'),
@@ -144,7 +219,51 @@ class _TableBody extends StatelessWidget {
                             ))
                         .toList(),
                   )),
-              _TrickInput(),
+              // Minimal play control for the active trick when it's your turn (server mode)
+              Builder(builder: (ctx) {
+                final svc = ctx.read<PitchService>();
+                final myPos = store.mySeatPos;
+                if (myPos == null) return const SizedBox.shrink();
+                final tricks = store.tricksAll;
+                if (tricks.isEmpty) return const SizedBox.shrink();
+                final active = tricks.last;
+                // Determine whose turn it would be based on leader + current plays count
+                final order = const ['N', 'E', 'S', 'W'];
+                final leadIdx = order.indexOf(active.leader);
+                final turnIdx = (leadIdx + active.plays.length) % 4;
+                final turnPos = order[turnIdx];
+                final isMyTurn = myPos == turnPos;
+                final legal = store.legalCardsForTurn();
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Play ($turnPos's turn)"),
+                      const SizedBox(height: 8),
+                      if (isMyTurn)
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: legal
+                              .map((c) => ElevatedButton(
+                                    onPressed: active.id != null
+                                        ? () => svc.playCard(active.id!, c)
+                                        : null,
+                                    child: Text(c),
+                                  ))
+                              .toList(),
+                        ),
+                    ],
+                  ),
+                );
+              }),
+              // Hide mock trick input in server mode
+              Builder(builder: (ctx) {
+                final backend = const String.fromEnvironment('BACKEND', defaultValue: 'mock');
+                if (backend == 'server') return const SizedBox.shrink();
+                return _TrickInput();
+              }),
             ],
             if (store.scoring != null) ...[
               const SizedBox(height: 8),
@@ -350,7 +469,9 @@ class _TrickInputState extends State<_TrickInput> {
                         plays: plays,
                         winner: winner,
                       );
-                  for (final c in _cards) c.clear();
+                  for (final c in _cards) {
+                    c.clear();
+                  }
                 },
                 child: const Text('Add'),
               ),
@@ -396,6 +517,60 @@ Map<String, List<String>> _groupBySuit(List<String> cards) {
   return map;
 }
 
+class _CurrentTrickPanel extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final store = context.watch<TableStore>();
+    final t = store.currentTrick;
+    if (t == null) return const SizedBox.shrink();
+  final plays = {for (final p in t.plays) p['pos']!: p['card']!};
+    final turnPos = store.currentTurnPos;
+
+    Widget seat(String pos) {
+      final card = plays[pos];
+      final style = TextStyle(
+        fontWeight: turnPos == pos ? FontWeight.bold : FontWeight.normal,
+        color: turnPos == pos ? Colors.teal : null,
+      );
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(pos, style: style),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.black12),
+              borderRadius: BorderRadius.circular(6),
+              color: card != null ? Colors.black12 : null,
+            ),
+            child: Text(card ?? '—'),
+          ),
+        ],
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        children: [
+          Center(child: seat('N')),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              seat('W'),
+              seat('E'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Center(child: seat('S')),
+        ],
+      ),
+    );
+  }
+}
+
 class _BidRowState extends State<_BidRow> {
   double _bid = 4; // simple default
 
@@ -406,7 +581,7 @@ class _BidRowState extends State<_BidRow> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
-          const Text('Bid:'),
+      Text('Bid (${store.nextBidPos}\'s turn)'),
           Expanded(
             child: Slider(
               value: _bid,
@@ -418,9 +593,11 @@ class _BidRowState extends State<_BidRow> {
             ),
           ),
           ElevatedButton(
-            onPressed: () => context
-                .read<TableStore>()
-                .submitBid(store.selectedBidPos, _bid.round()),
+      onPressed: store.isMyBidTurn
+        ? () => context
+          .read<TableStore>()
+          .submitBid(store.selectedBidPos, _bid.round())
+        : null,
             child: const Text('Bid'),
           ),
         ],

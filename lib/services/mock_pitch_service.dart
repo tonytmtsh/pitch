@@ -7,6 +7,10 @@ import 'dtos.dart';
 
 class MockPitchService implements PitchService {
   @override
+  String? currentUserId() => null;
+  @override
+  bool supportsIdentity() => false;
+  @override
   Future<List<LobbyTable>> fetchLobby() async {
     final raw = await rootBundle.loadString('mock/lobby.json');
     final jsonMap = json.decode(raw) as Map<String, dynamic>;
@@ -40,6 +44,7 @@ class MockPitchService implements PitchService {
       seats: seats,
       inProgress: (tbl['status'] as String) == 'playing',
   variant: tbl['variant'] as String?,
+  handId: 'demo-hand',
     );
   }
 
@@ -83,6 +88,7 @@ class MockPitchService implements PitchService {
               t.plays.map((p) => {'pos': p.pos, 'card': p.card}).toList(),
               t.winner,
               t.lastTrick,
+              id: null,
             ))
         .toList();
     return list;
@@ -118,4 +124,43 @@ class MockPitchService implements PitchService {
       delta: delta,
     );
   }
+
+  @override
+  Future<HandState> fetchHandState(String handId) async {
+    // Mock: assume replacements locked after sample data, trump hearts
+    return const HandState(replacementsLocked: true, trumpSuit: 'H');
+  }
+
+  @override
+  Future<List<String>> fetchPrivateHand(String handId, String pos) async {
+    // Mock: return a fixed set of 6 cards
+    return const ['AS', 'KH', 'QD', 'JC', '10S', '9H'];
+  }
+
+  @override
+  Future<bool> placeBid(String handId, {int? value, bool pass = false}) async {
+    // Mock: accept and pretend success
+    return true;
+  }
+
+  @override
+  Future<List<String>> requestReplacements(String handId, List<String> discarded) async {
+    // Mock: echo back the same count of drawn placeholder cards
+    return List<String>.filled(discarded.length, '??');
+  }
+
+  @override
+  Future<bool> lockReplacements(String handId) async => true;
+
+  @override
+  Future<bool> declareTrump(String handId, String suit) async => true;
+
+  @override
+  Future<bool> playCard(String trickId, String card) async => true;
+
+  @override
+  Stream<void> handEvents(String handId) async* {}
+
+  @override
+  Future<void> signOut() async {}
 }

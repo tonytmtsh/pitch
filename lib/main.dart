@@ -43,7 +43,44 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
           useMaterial3: true,
         ),
-        home: const LobbyScreen(),
+        home: Builder(builder: (ctx) {
+          final svc = ctx.read<PitchService>();
+          if (backend == 'server' && svc.supportsIdentity() && svc.currentUserId() == null) {
+            return _SignInScreen(supabaseUrl: supabaseUrl, supabaseAnon: supabaseAnon);
+          }
+          return const LobbyScreen();
+        }),
+      ),
+    );
+  }
+}
+
+class _SignInScreen extends StatelessWidget {
+  const _SignInScreen({required this.supabaseUrl, required this.supabaseAnon});
+  final String supabaseUrl;
+  final String supabaseAnon;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pitch — Sign In')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('You are not signed in.'),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () async {
+                // For demo: sign in anonymously
+                if (supabaseUrl.isEmpty || supabaseAnon.isEmpty) return;
+                final client = Supabase.instance.client;
+                await client.auth.signInAnonymously();
+                (context as Element).markNeedsBuild();
+              },
+              child: const Text('Continue as guest'),
+            ),
+          ],
+        ),
       ),
     );
   }

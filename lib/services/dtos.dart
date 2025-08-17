@@ -1,5 +1,5 @@
-/// Sample DTOs for common RPCs and API payloads.
-/// These standardize shapes across mock and future Supabase service.
+// Sample DTOs for common RPCs and API payloads.
+// These standardize shapes across mock and future Supabase service.
 
 class LobbyEntryDto {
   final String id;

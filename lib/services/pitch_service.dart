@@ -7,6 +7,20 @@ abstract class PitchService {
   Future<List<ReplacementEvent>> fetchReplacements(String handId);
   Future<List<TrickSnapshot>> fetchTricks(String handId);
   Future<ScoringBreakdown> fetchScoring(String handId, {String variant = '10_point'});
+  Future<HandState> fetchHandState(String handId);
+  Future<List<String>> fetchPrivateHand(String handId, String pos);
+  // Identity (server may return a user id; mock returns null)
+  String? currentUserId();
+  bool supportsIdentity();
+  // Actions (server-backed in Supabase; no-ops in mock)
+  Future<bool> placeBid(String handId, {int? value, bool pass = false});
+  Future<List<String>> requestReplacements(String handId, List<String> discarded);
+  Future<bool> lockReplacements(String handId);
+  Future<bool> declareTrump(String handId, String suit);
+  Future<bool> playCard(String trickId, String card);
+  Future<void> signOut();
+  // Realtime (server emits, mock is empty)
+  Stream<void> handEvents(String handId);
 }
 
 /// Minimal models matching mock JSON shape we created under /mock.
@@ -44,13 +58,15 @@ class TableDetails {
   final List<Seat> seats;
   final bool inProgress;
   final String? variant;
+  final String? handId;
 
   TableDetails({
     required this.id,
     required this.name,
     required this.seats,
     required this.inProgress,
-    this.variant,
+  this.variant,
+  this.handId,
   });
 
   factory TableDetails.fromJson(Map<String, dynamic> json) => TableDetails(
@@ -62,14 +78,16 @@ class TableDetails {
             .map(Seat.fromJson)
             .toList(),
         variant: json['variant'] as String?,
+  handId: json['handId'] as String?,
       );
 }
 
 class Seat {
   final int position; // 0-3
   final String? player;
+  final String? userId;
 
-  Seat({required this.position, required this.player});
+  Seat({required this.position, required this.player, this.userId});
 
   static Seat fromJson(Map<String, dynamic> json) =>
       Seat(position: json['position'] as int, player: json['player'] as String?);
@@ -92,12 +110,19 @@ class ReplacementEvent {
 }
 
 class TrickSnapshot {
+  final String? id; // server trick id when available
   final int index;
   final String leader;
   final List<Map<String, String>> plays; // {pos, card}
   final String winner;
   final bool lastTrick;
-  TrickSnapshot(this.index, this.leader, this.plays, this.winner, this.lastTrick);
+  TrickSnapshot(this.index, this.leader, this.plays, this.winner, this.lastTrick, {this.id});
+}
+
+class HandState {
+  final bool replacementsLocked;
+  final String? trumpSuit; // 'S'|'H'|'D'|'C' or null if undeclared
+  const HandState({required this.replacementsLocked, this.trumpSuit});
 }
 
 class ScoringBreakdown {

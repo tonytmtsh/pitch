@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../services/pitch_service.dart';
@@ -7,6 +8,7 @@ class TableStore extends ChangeNotifier {
 
   final PitchService _service;
   final String tableId;
+  StreamSubscription<void>? _sub;
 
   TableDetails? _table;
   bool _loading = false;
@@ -37,8 +39,14 @@ class TableStore extends ChangeNotifier {
         ..._tricks,
         ..._tricksPending,
       ];
+  bool _replacementsLocked = false; // fallback when handState not available
+  bool get replacementsLocked => _handState?.replacementsLocked ?? _replacementsLocked;
   ScoringBreakdown? _scoring;
   ScoringBreakdown? get scoring => _scoring;
+  HandState? _handState;
+  HandState? get handState => _handState;
+  List<String> _myCards = const [];
+  List<String> get myCards => _myCards;
   String _variant = '10_point';
   String get variant => _variant;
   void setVariant(String v) {
@@ -74,6 +82,31 @@ class TableStore extends ChangeNotifier {
     return pos;
   }
 
+  // --- Seat and turn helpers ---
+  String? get mySeatPos {
+    final uid = _service.currentUserId();
+    final t = _table;
+    if (uid == null || t == null) return null;
+    for (final s in t.seats) {
+      if (s.userId == uid) {
+        const order = ['N', 'E', 'S', 'W'];
+        return order[s.position];
+      }
+    }
+    return null;
+  }
+
+  String get nextBidPos {
+    final order = biddingOrder;
+    if (biddingActions.isEmpty) return order.first;
+    final last = biddingActions.last;
+    final lastPos = (last['pos'] as String?) ?? order.first;
+    final idx = order.indexOf(lastPos);
+    return order[(idx + 1) % order.length];
+  }
+
+  bool get isMyBidTurn => mySeatPos != null && mySeatPos == nextBidPos;
+
   Future<void> refresh() async {
     _loading = true;
     _error = null;
@@ -83,29 +116,48 @@ class TableStore extends ChangeNotifier {
       if (_table?.variant != null) {
         _variant = _table!.variant!;
       }
-      // Best-effort fetch of current hand progress using mock data.
-      // The mock ignores handId; server will need a real ID.
-      const handId = 'demo';
-      try {
+  final handId = _table?.handId ?? 'demo';
+  try {
         _bidding = await _service.fetchBidding(handId);
       } catch (_) {
         _bidding = null;
       }
   _biddingPending.clear();
-  _selectedBidPos = _bidding?.order.firstOrNull;
-      try {
+  // Prefer my seat if known; else first in order
+  _selectedBidPos = mySeatPos ?? _bidding?.order.firstOrNull;
+  try {
         _replacements = await _service.fetchReplacements(handId);
       } catch (_) {
         _replacements = const [];
       }
   _replacementsPending.clear();
+  // If any replacement events exist for all four seats, assume locked
+  final seatsDone = _replacements.map((r) => r.pos).toSet();
+  _replacementsLocked = seatsDone.length >= 4;
       try {
         _tricks = await _service.fetchTricks(handId);
       } catch (_) {
         _tricks = const [];
       }
   _tricksPending.clear();
+      try {
+        _handState = await _service.fetchHandState(handId);
+      } catch (_) {
+        _handState = null;
+      }
+      try {
+        final myPos = mySeatPos;
+        _myCards = myPos != null ? await _service.fetchPrivateHand(handId, myPos) : const [];
+      } catch (_) {
+        _myCards = const [];
+      }
       await _loadScoring();
+      // Start/refresh realtime subscription
+      await _sub?.cancel();
+      _sub = _service.handEvents(handId).listen((_) {
+        // Lightweight refresh of hand-related sections
+        _refreshHandParts();
+      });
     } catch (e) {
       _error = e;
     } finally {
@@ -114,9 +166,69 @@ class TableStore extends ChangeNotifier {
     }
   }
 
+  Future<void> _refreshHandParts() async {
+    final handId = _table?.handId;
+    if (handId == null) return;
+    try {
+      _bidding = await _service.fetchBidding(handId);
+    } catch (_) {}
+    try {
+      _replacements = await _service.fetchReplacements(handId);
+    } catch (_) {}
+    try {
+      _tricks = await _service.fetchTricks(handId);
+    } catch (_) {}
+    try {
+      _handState = await _service.fetchHandState(handId);
+    } catch (_) {}
+    try {
+      final myPos = mySeatPos;
+      _myCards = myPos != null ? await _service.fetchPrivateHand(handId, myPos) : const [];
+    } catch (_) {}
+    try {
+      await _loadScoring();
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  // Placeholder: simple legal cards filter (server enforces real rules)
+  List<String> legalCardsForTurn() {
+    final myPos = mySeatPos;
+    if (myPos == null || _myCards.isEmpty || _tricks.isEmpty) return _myCards;
+    final active = _tricks.last;
+    if (active.plays.isEmpty) return _myCards; // leading can play any
+    final led = active.plays.first['card'];
+    if (led == null || led.isEmpty) return _myCards;
+  final ledSuit = led.substring(led.length - 1);
+  final hasLed = _myCards.any((c) => c.isNotEmpty && c[c.length - 1] == ledSuit);
+    if (!hasLed) return _myCards;
+  return _myCards.where((c) => c.isNotEmpty && c[c.length - 1] == ledSuit).toList();
+  }
+
+  TrickSnapshot? get currentTrick {
+    if (_tricks.isEmpty) return null;
+    return _tricks.last;
+  }
+
+  String? get currentTurnPos {
+    final t = currentTrick;
+    if (t == null) return null;
+    final order = const ['N', 'E', 'S', 'W'];
+    final leadIdx = order.indexOf(t.leader);
+    if (leadIdx < 0) return null;
+    final turnIdx = (leadIdx + t.plays.length) % 4;
+    return order[turnIdx];
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
   Future<void> _loadScoring() async {
     try {
-      const handId = 'demo';
+  final handId = _table?.handId ?? 'demo';
       _scoring = await _service.fetchScoring(handId, variant: _variant);
     } catch (_) {
       _scoring = null;
@@ -132,20 +244,79 @@ class TableStore extends ChangeNotifier {
 
   void submitBid(String pos, int bid) {
     if (bid <= 0) return;
-    _biddingPending.add({'pos': pos, 'bid': bid});
+    final effectivePos = mySeatPos ?? pos;
+    final action = {'pos': effectivePos, 'bid': bid};
+    _biddingPending.add(action);
     notifyListeners();
+    // Optimistic server call (mock will just return true)
+    final handId = _table?.handId;
+    if (handId != null) {
+      _service.placeBid(handId, value: bid, pass: false).then((ok) {
+        if (!ok) {
+          _biddingPending.remove(action);
+          _error = 'Bid rejected';
+          notifyListeners();
+        }
+      }).catchError((e) {
+        _biddingPending.remove(action);
+        _error = e;
+        notifyListeners();
+      });
+    }
   }
 
   void submitPass(String pos) {
-    _biddingPending.add({'pos': pos, 'pass': true});
+    final effectivePos = mySeatPos ?? pos;
+    final action = {'pos': effectivePos, 'pass': true};
+    _biddingPending.add(action);
     notifyListeners();
+    final handId = _table?.handId;
+    if (handId != null) {
+      _service.placeBid(handId, pass: true).then((ok) {
+        if (!ok) {
+          _biddingPending.remove(action);
+          _error = 'Pass rejected';
+          notifyListeners();
+        }
+      }).catchError((e) {
+        _biddingPending.remove(action);
+        _error = e;
+        notifyListeners();
+      });
+    }
   }
 
   // --- Local demo replacements (mock only; not persisted) ---
   void addReplacement(String pos, List<String> discarded, List<String> drawn) {
-    _replacementsPending
-        .add(ReplacementEvent(pos, List.of(discarded), List.of(drawn)));
+    final effectivePos = mySeatPos ?? pos;
+    final pending = ReplacementEvent(effectivePos, List.of(discarded), List.of(drawn));
+    _replacementsPending.add(pending);
     notifyListeners();
+    final handId = _table?.handId;
+    if (handId != null) {
+      _service.requestReplacements(handId, discarded).then((drawnServer) {
+        // Update the pending entry's drawn cards with server result
+        final idx = _replacementsPending.indexOf(pending);
+        if (idx >= 0) {
+          _replacementsPending[idx] = ReplacementEvent(effectivePos, pending.discarded, List.of(drawnServer));
+          notifyListeners();
+        }
+      }).catchError((e) {
+        _replacementsPending.remove(pending);
+        _error = e;
+        notifyListeners();
+      });
+    }
+  }
+
+  Future<void> lockReplacementsNow() async {
+    final handId = _table?.handId;
+    if (handId == null) return;
+    final ok = await _service.lockReplacements(handId);
+    if (ok) {
+      _replacementsLocked = true;
+      notifyListeners();
+    }
   }
 
   // --- Local demo tricks (mock only; not persisted) ---

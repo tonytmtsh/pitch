@@ -205,6 +205,28 @@ class TableStore extends ChangeNotifier {
   return _myCards.where((c) => c.isNotEmpty && c[c.length - 1] == ledSuit).toList();
   }
 
+  /// Get cards that follow the led suit
+  List<String> cardsThatFollowSuit() {
+    final myPos = mySeatPos;
+    if (myPos == null || _myCards.isEmpty || _tricks.isEmpty) return [];
+    final active = _tricks.last;
+    if (active.plays.isEmpty) return []; // leading, no suit to follow
+    final led = active.plays.first['card'];
+    if (led == null || led.isEmpty) return [];
+    final ledSuit = led.substring(led.length - 1);
+    return _myCards.where((c) => c.isNotEmpty && c[c.length - 1] == ledSuit).toList();
+  }
+
+  /// Get the suit that must be followed (if any)
+  String? get requiredSuit {
+    if (_tricks.isEmpty) return null;
+    final active = _tricks.last;
+    if (active.plays.isEmpty) return null; // leading
+    final led = active.plays.first['card'];
+    if (led == null || led.isEmpty) return null;
+    return led.substring(led.length - 1);
+  }
+
   TrickSnapshot? get currentTrick {
     if (_tricks.isEmpty) return null;
     return _tricks.last;

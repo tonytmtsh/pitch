@@ -4,6 +4,7 @@ import 'widgets/playing_card.dart';
 
 import '../services/pitch_service.dart';
 import '../state/table_store.dart';
+import '../state/settings_store.dart';
 
 class TableScreen extends StatelessWidget {
   const TableScreen({super.key, required this.tableId, required this.name});
@@ -166,30 +167,67 @@ class _TableBody extends StatelessWidget {
               const ListTile(title: Text('My Hand')),
               const Divider(height: 1),
               Builder(builder: (ctx) {
+                final settings = ctx.watch<SettingsStore>();
+                final showHints = settings.showCardHints;
                 final legal = store.legalCardsForTurn().toSet();
+                final followsSuit = store.cardsThatFollowSuit().toSet();
+                final requiredSuit = store.requiredSuit;
                 final tricks = store.tricksAll;
                 final active = tricks.isNotEmpty ? tricks.last : null;
                 final isMyTurn = store.currentTurnPos == store.mySeatPos;
+                
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: store.myCards.map((c) {
-                      final isLegal = legal.contains(c);
-                      return CardButton(
-                        enabled: isMyTurn && isLegal && (active?.id != null),
-                        onTap: (isMyTurn && isLegal && active?.id != null)
-                            ? () => ctx.read<PitchService>().playCard(active!.id!, c)
-                            : null,
-                        child: PlayingCardView(
-                          code: c,
-                          width: 64,
-                          highlight: isMyTurn && isLegal,
-                          disabled: !isLegal,
-                        ),
-                      );
-                    }).toList(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Settings toggle for hints
+                      Row(
+                        children: [
+                          const Text('Card hints:'),
+                          const SizedBox(width: 8),
+                          Switch(
+                            value: showHints,
+                            onChanged: (value) => settings.setCardHints(value),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Cards display
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: store.myCards.map((c) {
+                          final isLegal = legal.contains(c);
+                          final cardFollowsSuit = followsSuit.contains(c);
+                          
+                          Widget cardWidget = PlayingCardView(
+                            code: c,
+                            width: 64,
+                            highlight: showHints && isMyTurn && isLegal && !cardFollowsSuit,
+                            disabled: showHints && !isLegal,
+                            followsSuit: showHints && cardFollowsSuit,
+                          );
+                          
+                          // Add tooltip for disabled cards when hints are enabled
+                          if (showHints && !isLegal && requiredSuit != null) {
+                            final suitName = _getSuitName(requiredSuit);
+                            cardWidget = Tooltip(
+                              message: 'Must follow suit: $suitName',
+                              child: cardWidget,
+                            );
+                          }
+                          
+                          return CardButton(
+                            enabled: isMyTurn && isLegal && (active?.id != null),
+                            onTap: (isMyTurn && isLegal && active?.id != null)
+                                ? () => ctx.read<PitchService>().playCard(active!.id!, c)
+                                : null,
+                            child: cardWidget,
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ),
                 );
               }),
@@ -628,5 +666,21 @@ class _BidRowState extends State<_BidRow> {
         ],
       ),
     );
+  }
+}
+
+/// Helper function to get human-readable suit names
+String _getSuitName(String suit) {
+  switch (suit) {
+    case 'H':
+      return 'Hearts ♥';
+    case 'D':
+      return 'Diamonds ♦';
+    case 'C':
+      return 'Clubs ♣';
+    case 'S':
+      return 'Spades ♠';
+    default:
+      return suit;
   }
 }

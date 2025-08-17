@@ -9,6 +9,7 @@ class PlayingCardView extends StatelessWidget {
     this.faceUp = true,
     this.highlight = false,
     this.disabled = false,
+    this.followsSuit = false,
   });
 
   final String code;
@@ -16,6 +17,7 @@ class PlayingCardView extends StatelessWidget {
   final bool faceUp;
   final bool highlight;
   final bool disabled;
+  final bool followsSuit;
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +25,24 @@ class PlayingCardView extends StatelessWidget {
     final radius = BorderRadius.circular(8);
     final (rank, suitChar) = _parse(code);
     final (suit, color) = _suitInfo(suitChar);
+
+    // Determine border color and style based on state
+    Color borderColor;
+    double borderWidth;
+    
+    if (disabled) {
+      borderColor = Colors.red.shade300;
+      borderWidth = 1;
+    } else if (followsSuit) {
+      borderColor = Colors.green.shade600;
+      borderWidth = 3;
+    } else if (highlight) {
+      borderColor = Colors.teal;
+      borderWidth = 2;
+    } else {
+      borderColor = Colors.black26;
+      borderWidth = 1;
+    }
 
     return Opacity(
       opacity: disabled ? 0.45 : 1,
@@ -33,16 +53,40 @@ class PlayingCardView extends StatelessWidget {
           color: faceUp ? Colors.white : const Color(0xFF0D47A1),
           borderRadius: radius,
           border: Border.all(
-            color: highlight ? Colors.teal : Colors.black26,
-            width: highlight ? 2 : 1,
+            color: borderColor,
+            width: borderWidth,
           ),
           boxShadow: const [
             BoxShadow(blurRadius: 4, offset: Offset(0, 2), color: Colors.black12),
           ],
         ),
-        child: faceUp
-            ? _Face(rank: rank, suit: suit, color: color)
-            : const _BackPattern(),
+        child: Stack(
+          children: [
+            if (faceUp)
+              _Face(rank: rank, suit: suit, color: color)
+            else
+              const _BackPattern(),
+            // Badge for following suit
+            if (followsSuit && !disabled)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade600,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 12,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pitch/main.dart';
 
 void main() {
-  testWidgets('Lobby renders with mock data', (WidgetTester tester) async {
+  testWidgets('Lobby renders with mock data and help button', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
     // Initial load shows progress indicator, then lists mock tables.
@@ -18,5 +18,8 @@ void main() {
 
     expect(find.text('Demo 10-point'), findsOneWidget);
     expect(find.textContaining('Seats'), findsWidgets);
+    
+    // Verify help button is present
+    expect(find.byTooltip('Rules & Help'), findsOneWidget);
   });
 }

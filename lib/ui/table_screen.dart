@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'widgets/playing_card.dart';
 
 import '../services/pitch_service.dart';
 import '../state/table_store.dart';
@@ -164,14 +165,34 @@ class _TableBody extends StatelessWidget {
               const SizedBox(height: 8),
               const ListTile(title: Text('My Hand')),
               const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: store.myCards.map((c) => Chip(label: Text(c))).toList(),
-                ),
-              ),
+              Builder(builder: (ctx) {
+                final legal = store.legalCardsForTurn().toSet();
+                final tricks = store.tricksAll;
+                final active = tricks.isNotEmpty ? tricks.last : null;
+                final isMyTurn = store.currentTurnPos == store.mySeatPos;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: store.myCards.map((c) {
+                      final isLegal = legal.contains(c);
+                      return CardButton(
+                        enabled: isMyTurn && isLegal && (active?.id != null),
+                        onTap: (isMyTurn && isLegal && active?.id != null)
+                            ? () => ctx.read<PitchService>().playCard(active!.id!, c)
+                            : null,
+                        child: PlayingCardView(
+                          code: c,
+                          width: 64,
+                          highlight: isMyTurn && isLegal,
+                          disabled: !isLegal,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                );
+              }),
             ],
             // Replacements section
             if (store.replacementsAll.isNotEmpty) ...[
@@ -537,15 +558,19 @@ class _CurrentTrickPanel extends StatelessWidget {
         children: [
           Text(pos, style: style),
           const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.black12),
-              borderRadius: BorderRadius.circular(6),
-              color: card != null ? Colors.black12 : null,
+          if (card != null)
+            PlayingCardView(code: card, width: 56)
+          else
+            Container(
+              width: 56,
+              height: 56 * 1.4,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.black12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text('—'),
             ),
-            child: Text(card ?? '—'),
-          ),
         ],
       );
     }

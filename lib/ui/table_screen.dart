@@ -4,6 +4,8 @@ import 'widgets/playing_card.dart';
 
 import '../services/pitch_service.dart';
 import '../state/table_store.dart';
+import '../state/settings_store.dart';
+import 'settings_sheet.dart';
 
 class TableScreen extends StatelessWidget {
   const TableScreen({super.key, required this.tableId, required this.name});
@@ -31,6 +33,11 @@ class _TableBody extends StatelessWidget {
       appBar: AppBar(
         title: Text(name),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () => SettingsSheet.show(context),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
@@ -166,6 +173,7 @@ class _TableBody extends StatelessWidget {
               const ListTile(title: Text('My Hand')),
               const Divider(height: 1),
               Builder(builder: (ctx) {
+                final settings = ctx.watch<SettingsStore>();
                 final legal = store.legalCardsForTurn().toSet();
                 final tricks = store.tricksAll;
                 final active = tricks.isNotEmpty ? tricks.last : null;
@@ -177,6 +185,7 @@ class _TableBody extends StatelessWidget {
                     runSpacing: 8,
                     children: store.myCards.map((c) {
                       final isLegal = legal.contains(c);
+                      final shouldHighlight = settings.showHints && isMyTurn && isLegal;
                       return CardButton(
                         enabled: isMyTurn && isLegal && (active?.id != null),
                         onTap: (isMyTurn && isLegal && active?.id != null)
@@ -185,7 +194,7 @@ class _TableBody extends StatelessWidget {
                         child: PlayingCardView(
                           code: c,
                           width: 64,
-                          highlight: isMyTurn && isLegal,
+                          highlight: shouldHighlight,
                           disabled: !isLegal,
                         ),
                       );

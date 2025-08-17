@@ -1,0 +1,10 @@
+{
+  "tricks": [
+    {"index":1,"leader":"W","plays":[{"pos":"W","card":"JD"},{"pos":"N","card":"AS"},{"pos":"E","card":"4S"},{"pos":"S","card":"QS"}],"winner":"N"},
+    {"index":2,"leader":"N","plays":[{"pos":"N","card":"KD"},{"pos":"E","card":"QD"},{"pos":"S","card":"AD"},{"pos":"W","card":"10D"}],"winner":"S"},
+    {"index":3,"leader":"S","plays":[{"pos":"S","card":"JH"},{"pos":"W","card":"QH"},{"pos":"N","card":"QH"},{"pos":"E","card":"10H"}],"winner":"W"},
+    {"index":4,"leader":"W","plays":[{"pos":"W","card":"10C"},{"pos":"N","card":"JC"},{"pos":"E","card":"9C"},{"pos":"S","card":"KC"}],"winner":"S"},
+    {"index":5,"leader":"S","plays":[{"pos":"S","card":"QS"},{"pos":"W","card":"KS"},{"pos":"N","card":"10S"},{"pos":"E","card":"JS"}],"winner":"W"},
+    {"index":6,"leader":"W","plays":[{"pos":"W","card":"5H"},{"pos":"N","card":"3C"},{"pos":"E","card":"4S"},{"pos":"S","card":"6S"}],"winner":"S","last_trick":true}
+  ]
+}

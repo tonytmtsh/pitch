@@ -1,0 +1,12 @@
+{
+  "bidding": {
+    "order": ["E","S","W","N"],
+    "actions": [
+      {"pos":"E","bid":3},
+      {"pos":"S","pass":true},
+      {"pos":"W","bid":4},
+      {"pos":"N","pass":true}
+    ],
+    "winner": {"pos":"W","bid":4}
+  }
+}

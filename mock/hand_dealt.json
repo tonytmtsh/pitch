@@ -1,0 +1,14 @@
+{
+  "hand": {
+    "game_id": "33333333-3333-3333-3333-333333333333",
+    "hand_number": 1,
+    "dealer": "N",
+    "stock_count": 28,
+    "hands_private": {
+      "N": ["AS","KD","QH","JC","10S","5D"],
+      "E": ["KH","QD","JS","10H","9C","4S"],
+      "S": ["AC","KC","QS","JH","10D","7H"],
+      "W": ["AD","KS","QH","JD","10C","2S"]
+    }
+  }
+}

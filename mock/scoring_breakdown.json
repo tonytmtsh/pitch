@@ -1,0 +1,22 @@
+{
+  "four_point": {
+    "trumps": "S",
+    "captured_by": {
+      "NS": ["AS","10S","JS"],
+      "EW": ["2S"]
+    },
+    "game_totals": {"NS": 15, "EW": 0},
+    "awards": {"High":"NS","Low":"EW","Jack":"NS","Game":"NS"},
+    "delta": {"NS": 3, "EW": 1}
+  },
+  "ten_point": {
+    "trumps": "D",
+    "captured_by": {
+      "NS": ["AD","KD","QD","JD","10D","5D"],
+      "EW": ["2D"]
+    },
+    "game_values": {"NS": 13, "EW": 0},
+    "awards": {"High":"NS","Low":"EW","Jack":"NS","Game":"NS","LastTrick":"EW","Five":"NS"},
+    "delta": {"NS": 8, "EW": 1}
+  }
+}

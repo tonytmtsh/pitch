@@ -1,0 +1,8 @@
+{
+  "replacements": [
+    {"pos":"W","discarded":["2S","4S"],"drawn":["9D","5H"]},
+    {"pos":"N","discarded":["5D"],"drawn":["3C"]},
+    {"pos":"E","discarded":[],"drawn":[]},
+    {"pos":"S","discarded":["7H"],"drawn":["6S"]}
+  ]
+}

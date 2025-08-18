@@ -324,7 +324,8 @@ class _TableBodyState extends State<_TableBody> {
                     children: t.plays
                         .map((p) => ListTile(
                               leading: CircleAvatar(child: Text(p['pos']!)),
-                              title: Text(p['card']!),
+                              title: Text('Seat ${p['pos']!}'),
+                              trailing: PlayingCardView(code: p['card']!, width: 40),
                             ))
                         .toList(),
                   )),

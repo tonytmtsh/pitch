@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'playing_card.dart';
 
 class ResponsiveLayout {
   static const double mobileBreakpoint = 600.0;
@@ -141,20 +142,28 @@ class MobileCurrentTrickPanel extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: cards.map((card) {
-                return Container(
-                  width: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.grey),
-                  ),
-                  child: Center(
-                    child: Text(
-                      card['card'] ?? '?',
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                  ),
-                );
+                final code = card['card'];
+                return code != null && code.isNotEmpty
+                    ? AspectRatio(
+                        aspectRatio: 56 / (56 * 1.4),
+                        child: Center(
+                          child: SizedBox(
+                            width: 40,
+                            child: PlayingCardView(code: code, width: 40),
+                          ),
+                        ),
+                      )
+                    : Container(
+                        width: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.grey),
+                        ),
+                        child: const Center(
+                          child: Text('—', style: TextStyle(fontSize: 10)),
+                        ),
+                      );
               }).toList(),
             ),
           ),

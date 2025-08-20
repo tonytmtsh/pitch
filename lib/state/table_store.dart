@@ -15,6 +15,11 @@ class TableStore extends ChangeNotifier {
   TableDetails? _table;
   bool _loading = false;
   Object? _error;
+  // Sandbox (local play) state
+  bool _sandbox = false;
+  Map<String, List<String>> _hands = const {};
+  String _dealer = 'N';
+  String? _mySeatOverride;
 
   // Hand flow snapshots (mock for now; server wiring later)
   BiddingProgress? _bidding;
@@ -34,6 +39,8 @@ class TableStore extends ChangeNotifier {
   TableDetails? get table => _table;
   bool get loading => _loading;
   Object? get error => _error;
+  bool get sandboxMode => _sandbox;
+  String get dealer => _dealer;
   BiddingProgress? get bidding => _bidding;
   List<ReplacementEvent> get replacements => _replacements;
   List<ReplacementEvent> get replacementsAll => [
@@ -138,6 +145,181 @@ class TableStore extends ChangeNotifier {
     _variant = v;
     _loadScoring();
   }
+
+  // --- Sandbox setup and controls ---
+  void startSandbox({String dealer = 'N'}) {
+    _sandbox = true;
+    _dealer = dealer;
+    final names = ['Alice#1001', 'Bob#1002', 'Carol#1003', 'Dave#1004'];
+    final order = ['N', 'E', 'S', 'W'];
+    final seats = <Seat>[];
+    for (var i = 0; i < 4; i++) {
+      final name = names[i];
+      seats.add(Seat(position: i, player: name, userId: name));
+    }
+    _table = TableDetails(
+      id: 'local',
+      name: 'Sandbox Table',
+      seats: seats,
+      inProgress: true,
+      variant: _variant,
+      handId: 'local-hand',
+    );
+    final ranks = ['A','K','Q','J','10','9','8','7','6','5','4','3','2'];
+    final suits = ['S','H','D','C'];
+    final deck = <String>[];
+    for (final r in ranks) {
+      for (final s in suits) {
+        deck.add('$r$s');
+      }
+    }
+    deck.shuffle();
+    final hands = <String, List<String>>{for (final p in order) p: <String>[]};
+    for (int i = 0; i < 6; i++) {
+      for (final p in order) {
+        hands[p]!.add(deck.removeLast());
+      }
+    }
+    _hands = hands;
+    final left = _leftOf(dealer);
+    _mySeatOverride = left;
+    _myCards = List.of(_hands[left] ?? const []);
+    _bidding = null;
+    _biddingPending.clear();
+    _replacements = const [];
+    _replacementsPending.clear();
+    _handState = const HandState(replacementsLocked: true, trumpSuit: null);
+    _tricks = [TrickSnapshot(0, left, <Map<String,String>>[], '', false, id: 'local-0')];
+    _tricksPending.clear();
+    _scoring = null;
+    notifyListeners();
+  }
+
+  void redealSandbox() {
+    if (!_sandbox) return;
+    startSandbox(dealer: _dealer);
+  }
+
+  void setControlSeat(String pos) {
+    _mySeatOverride = pos;
+    _myCards = List.of(_hands[pos] ?? const []);
+    notifyListeners();
+  }
+
+  void nextControlSeat() {
+    final order = const ['N','E','S','W'];
+    final cur = mySeatPos ?? 'N';
+    final idx = order.indexOf(cur);
+    setControlSeat(order[(idx + 1) % 4]);
+  }
+
+  String _leftOf(String pos) {
+    final order = const ['N','E','S','W'];
+    final i = order.indexOf(pos);
+    return order[(i + 1) % 4];
+  }
+
+  void setTrumpSuitLocal(String suit) {
+    if (!_sandbox) return;
+    _handState = HandState(replacementsLocked: true, trumpSuit: suit);
+    notifyListeners();
+  }
+
+  bool playCardAsCurrent(String card) {
+    final pos = mySeatPos;
+    if (pos == null) return false;
+    return _sandboxPlayCard(pos, card);
+  }
+
+  bool _sandboxPlayCard(String pos, String card) {
+    if (!_sandbox) return false;
+    final t = currentTrick;
+    if (t == null) return false;
+    final turn = currentTurnPos;
+    if (turn != pos) return false;
+    final hand = _hands[pos] ?? <String>[];
+    if (!hand.contains(card)) return false;
+    hand.remove(card);
+    _hands[pos] = hand;
+    if (mySeatPos == pos) {
+      _myCards = List.of(hand);
+    }
+    t.plays.add({'pos': pos, 'card': card});
+    if (t.plays.length >= 4) {
+      final winner = _determineTrickWinner(t.leader, t.plays, trump: _handState?.trumpSuit);
+      final last = _hands.values.every((h) => h.isEmpty);
+      final completed = TrickSnapshot(t.index, t.leader, List.of(t.plays), winner, last, id: t.id);
+      _tricks[_tricks.length - 1] = completed;
+      _startTrickWinReveal('${t.index}');
+      if (!last) {
+        final next = TrickSnapshot(t.index + 1, winner, <Map<String,String>>[], '', false, id: 'local-${t.index + 1}');
+        _tricks.add(next);
+      }
+    }
+    notifyListeners();
+    return true;
+  }
+
+  String _determineTrickWinner(String leader, List<Map<String,String>> plays, {String? trump}) {
+    if (plays.isEmpty) return leader;
+    int rankScore(String rank) {
+      switch (rank) {
+        case 'A': return 14;
+        case 'K': return 13;
+        case 'Q': return 12;
+        case 'J': return 11;
+        case '10': return 10;
+        case '9': return 9;
+        case '8': return 8;
+        case '7': return 7;
+        case '6': return 6;
+        case '5': return 5;
+        case '4': return 4;
+        case '3': return 3;
+        case '2': return 2;
+        default: return 0;
+      }
+    }
+    String suitOf(String code) => code.substring(code.length - 1);
+    String rankOf(String code) => code.substring(0, code.length - 1);
+    final ledSuit = suitOf(plays.first['card']!);
+    int bestIdx = 0;
+    String bestCard = plays.first['card']!;
+    bool bestIsTrump = trump != null && suitOf(bestCard) == trump;
+    bool anyTrump = bestIsTrump;
+    for (int i = 1; i < plays.length; i++) {
+      final c = plays[i]['card']!;
+      final s = suitOf(c);
+      final isTrump = trump != null && s == trump;
+      if (isTrump) anyTrump = true;
+      if (anyTrump) {
+        if (!bestIsTrump && isTrump) {
+          bestIdx = i;
+          bestCard = c;
+          bestIsTrump = true;
+        } else if (bestIsTrump && isTrump) {
+          if (rankScore(rankOf(c)) > rankScore(rankOf(bestCard))) {
+            bestIdx = i;
+            bestCard = c;
+          }
+        }
+      } else {
+        if (s == ledSuit && suitOf(bestCard) == ledSuit) {
+          if (rankScore(rankOf(c)) > rankScore(rankOf(bestCard))) {
+            bestIdx = i;
+            bestCard = c;
+          }
+        } else if (s == ledSuit && suitOf(bestCard) != ledSuit) {
+          bestIdx = i;
+          bestCard = c;
+        }
+      }
+    }
+    final order = const ['N','E','S','W'];
+    final start = order.indexOf(leader);
+    final winnerPos = order[(start + bestIdx) % 4];
+    return winnerPos;
+  }
   List<Map<String, dynamic>> get biddingActions => [
         ...?_bidding?.actions,
         ..._biddingPending,
@@ -168,6 +350,7 @@ class TableStore extends ChangeNotifier {
 
   // --- Seat and turn helpers ---
   String? get mySeatPos {
+    if (_mySeatOverride != null) return _mySeatOverride;
     final uid = _service.currentUserId();
     final t = _table;
     if (uid == null || t == null) return null;
@@ -253,6 +436,10 @@ class TableStore extends ChangeNotifier {
   Future<void> _refreshHandParts() async {
     final handId = _table?.handId;
     if (handId == null) return;
+    if (_sandbox) {
+      notifyListeners();
+      return;
+    }
     try {
       _bidding = await _service.fetchBidding(handId);
     } catch (_) {}

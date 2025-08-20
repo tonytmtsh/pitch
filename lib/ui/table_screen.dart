@@ -7,6 +7,7 @@ import 'widgets/user_avatar.dart';
 // import 'widgets/responsive_layout.dart';
 // import 'widgets/keyboard_hand_widget.dart';
 import 'widgets/fan_hand.dart';
+import 'widgets/all_trick_row.dart';
 
 import '../services/pitch_service.dart';
 import '../services/sound_service.dart';
@@ -211,25 +212,69 @@ class _TableBodyState extends State<_TableBody> {
                   children: [
                     const Text('Declare trump:'),
                     const SizedBox(width: 8),
-                    DropdownButton<String>(
-                      value: null,
-                      hint: const Text('Suit'),
-                      items: const [
-                        DropdownMenuItem(value: 'S', child: Text('Spades')),
-                        DropdownMenuItem(value: 'H', child: Text('Hearts')),
-                        DropdownMenuItem(value: 'D', child: Text('Diamonds')),
-                        DropdownMenuItem(value: 'C', child: Text('Clubs')),
-                      ],
-                      onChanged: store.mySeatPos == store.biddingWinnerPos
-                          ? (suit) async {
-                              if (suit == null) return;
-                              final handId = context.read<TableStore>().table?.handId;
-                              if (handId != null) {
-                                await context.read<PitchService>().declareTrump(handId, suit);
+                    Builder(builder: (ctx) {
+                      final declared = store.handState?.trumpSuit;
+                      // Intentionally simple Dropdown; read-only label added after it below.
+                      return DropdownButton<String>(
+                        value: declared, // show selected suit if already declared
+                        hint: const Text('Suit'),
+                        items: const [
+                          DropdownMenuItem(value: 'S', child: Text('Spades')),
+                          DropdownMenuItem(value: 'H', child: Text('Hearts')),
+                          DropdownMenuItem(value: 'D', child: Text('Diamonds')),
+                          DropdownMenuItem(value: 'C', child: Text('Clubs')),
+                        ],
+                        onChanged: (declared == null && (store.sandboxMode || store.mySeatPos == store.biddingWinnerPos))
+                            ? (suit) async {
+                                if (suit == null) return;
+                                if (store.sandboxMode) {
+                                  ctx.read<TableStore>().setTrumpSuitLocal(suit);
+                                } else {
+                                  final handId = ctx.read<TableStore>().table?.handId;
+                                  if (handId != null) {
+                                    await ctx.read<PitchService>().declareTrump(handId, suit);
+                                  }
+                                }
                               }
-                            }
-                          : null,
-                    ),
+                            : null,
+                      );
+                    }),
+                    Builder(builder: (ctx) {
+                      final declared = store.handState?.trumpSuit;
+                      if (declared == null || declared.isEmpty) return const SizedBox.shrink();
+                      final label = {
+                        'S': 'Spades',
+                        'H': 'Hearts',
+                        'D': 'Diamonds',
+                        'C': 'Clubs',
+                      }[declared] ?? declared;
+                      final symbol = {
+                        'S': '♠',
+                        'H': '♥',
+                        'D': '♦',
+                        'C': '♣',
+                      }[declared] ?? '';
+                      final color = (declared == 'H' || declared == 'D')
+                          ? Colors.red
+                          : Colors.black87;
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: Tooltip(
+                          message: 'Trump suit: $label',
+                          child: Semantics(
+                            label: 'Trump suit $label',
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(symbol, style: TextStyle(color: color, fontSize: 16)),
+                                const SizedBox(width: 4),
+                                Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -296,10 +341,52 @@ class _TableBodyState extends State<_TableBody> {
                     ],
                   ),
                 ),
-              ...store.replacementsAll.map((r) => ListTile(
-                    leading: CircleAvatar(child: Text(r.pos)),
-                    title: Text('Discarded: ${r.discarded.join(', ')}'),
-                    subtitle: Text('Drawn: ${r.drawn.join(', ')}'),
+              ...store.replacementsAll.map((r) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(child: Text(r.pos)),
+                            const SizedBox(width: 8),
+                            const Text('Replacements'),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(width: 88, child: Text('Discarded:', style: TextStyle(fontWeight: FontWeight.w500))),
+                            Expanded(
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: r.discarded
+                                    .map((c) => PlayingCardView(code: c, width: 36))
+                                    .toList(),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(width: 88, child: Text('Drawn:', style: TextStyle(fontWeight: FontWeight.w500))),
+                            Expanded(
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: r.drawn
+                                    .map((c) => PlayingCardView(code: c, width: 36))
+                                    .toList(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   )),
               if (!store.replacementsLocked) _ReplacementInput(),
               const Divider(height: 1),
@@ -321,13 +408,12 @@ class _TableBodyState extends State<_TableBody> {
               ...store.tricksAll.map((t) => ExpansionTile(
                     title: Text('Trick ${t.index + 1} — Winner ${t.winner}${t.lastTrick ? ' (Last Trick)' : ''}'),
                     subtitle: Text('Leader ${t.leader}'),
-                    children: t.plays
-                        .map((p) => ListTile(
-                              leading: CircleAvatar(child: Text(p['pos']!)),
-                              title: Text('Seat ${p['pos']!}'),
-                              trailing: PlayingCardView(code: p['card']!, width: 40),
-                            ))
-                        .toList(),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: AllTrickRow(plays: t.plays, winner: t.winner),
+                      ),
+                    ],
                   )),
               // Minimal play control for the active trick when it's your turn (server mode)
               Builder(builder: (ctx) {
@@ -356,11 +442,12 @@ class _TableBodyState extends State<_TableBody> {
                           spacing: 6,
                           runSpacing: 6,
                           children: legal
-                              .map((c) => ElevatedButton(
-                                    onPressed: active.id != null
+                              .map((c) => CardButton(
+                                    enabled: active.id != null || store.sandboxMode,
+                                    onTap: (active.id != null && !store.sandboxMode)
                                         ? () => svc.playCard(active.id!, c)
-                                        : null,
-                                    child: Text(c),
+                                        : () => ctx.read<TableStore>().playCardAsCurrent(c),
+                                    child: PlayingCardView(code: c, width: 48, highlight: true),
                                   ))
                               .toList(),
                         ),
@@ -368,11 +455,44 @@ class _TableBodyState extends State<_TableBody> {
                   ),
                 );
               }),
-              // Hide mock trick input in server mode
+              // Sandbox controls: start, redeal, seat selection
               Builder(builder: (ctx) {
-                final backend = const String.fromEnvironment('BACKEND', defaultValue: 'mock');
-                if (backend == 'server') return const SizedBox.shrink();
-                return _TrickInput();
+                final s = ctx.watch<TableStore>();
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () => ctx.read<TableStore>().startSandbox(),
+                        icon: const Icon(Icons.sports_esports),
+                        label: const Text('Start Sandbox'),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: s.sandboxMode ? () => ctx.read<TableStore>().redealSandbox() : null,
+                        child: const Text('Redeal'),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text('Control seat:'),
+                      const SizedBox(width: 8),
+                      DropdownButton<String>(
+                        value: s.mySeatPos ?? 'N',
+                        items: const [
+                          DropdownMenuItem(value: 'N', child: Text('N')),
+                          DropdownMenuItem(value: 'E', child: Text('E')),
+                          DropdownMenuItem(value: 'S', child: Text('S')),
+                          DropdownMenuItem(value: 'W', child: Text('W')),
+                        ],
+                        onChanged: s.sandboxMode ? (v) => v != null ? ctx.read<TableStore>().setControlSeat(v) : null : null,
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: s.sandboxMode ? () => ctx.read<TableStore>().nextControlSeat() : null,
+                        child: const Text('Next Seat'),
+                      ),
+                    ],
+                  ),
+                );
               }),
             ],
             if (store.scoring != null) ...[
@@ -394,12 +514,6 @@ class _TableBodyState extends State<_TableBody> {
               ),
               ...store.scoring!.capturedBy.entries.map((e) {
                 final suitGroups = _groupBySuit(e.value);
-                final chips = suitGroups.entries
-                    .map((s) => Padding(
-                          padding: const EdgeInsets.only(right: 6, bottom: 6),
-                          child: Chip(label: Text('${s.key}: ${s.value.join(' ')}')),
-                        ))
-                    .toList();
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Column(
@@ -407,7 +521,32 @@ class _TableBodyState extends State<_TableBody> {
                     children: [
                       Text('${e.key} captured'),
                       const SizedBox(height: 6),
-                      Wrap(children: chips),
+                      ...suitGroups.entries.map((s) => Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 28,
+                                  child: Text(
+                                    s.key,
+                                    textAlign: TextAlign.right,
+                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    children: s.value
+                                        .map((c) => PlayingCardView(code: c, width: 36))
+                                        .toList(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
                     ],
                   ),
                 );

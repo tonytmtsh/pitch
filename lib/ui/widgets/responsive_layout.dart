@@ -50,26 +50,15 @@ class MobileHandWidget extends StatelessWidget {
           return Container(
             width: 60,
             margin: const EdgeInsets.symmetric(horizontal: 2),
-            child: GestureDetector(
+            child: CardButton(
+              enabled: isLegal,
               onTap: isLegal ? () => onCardTap(card) : null,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: isLegal ? Colors.green : Colors.grey,
-                    width: isLegal ? 2 : 1,
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    card,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: isLegal ? Colors.green[700] : Colors.grey[600],
-                    ),
-                  ),
-                ),
+              child: PlayingCardView(
+                code: card,
+                width: 56,
+                highlight: isLegal,
+                highlightColor: Colors.green,
+                disabled: !isLegal,
               ),
             ),
           );
